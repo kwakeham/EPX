@@ -44,11 +44,12 @@
 #include "app_uart.h"
 #include "app_util_platform.h"
 #include "ble_cus.h"
-#include "max11254.h"
+
 #include "data_handler.h"
 
-#define DEVICE_NAME                     "BRV9"                         /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME               "BodyRocket"                       /**< Manufacturer. Will be passed to Device Information Service. */
+
+#define DEVICE_NAME                     "EPX"                         /**< Name of device. Will be included in the advertising data. */
+#define MANUFACTURER_NAME               "TitanLab"                       /**< Manufacturer. Will be passed to Device Information Service. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_ADV_INTERVAL                320                                         /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
@@ -401,6 +402,7 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
         // memcpy(nus_message, p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
         // NRF_LOG_INFO("BLE: %s",nus_message);
         // max_command(nus_message);//command handler
+
         data_handler_command((const char *)p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);//command handler
 
         // for (uint32_t i = 0; i < p_evt->params.rx_data.length; i++)
@@ -607,7 +609,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             NRF_LOG_INFO("Disconnected");
             // LED indication will be changed when advertising starts.
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
-            max_req_shutdown();
+            // max_req_shutdown();
+            // TODO shut down everything like ADC, prep the LIS to interrupt
             break;
 
         case BLE_GAP_EVT_CONNECTED:
@@ -618,7 +621,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             APP_ERROR_CHECK(err_code);
             err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0 );
             APP_ERROR_CHECK(err_code);
-            max_req_startup();
+            // max_req_startup();
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
