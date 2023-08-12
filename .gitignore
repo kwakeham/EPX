@@ -1,0 +1,8 @@
+dfu/pca10040_ble/armgcc/_build/
+pca10040/s132/armgcc/_build/
+dfu/pca10040_ble/armgcc/_build_W/
+pca10040/s132/armgcc/app_dfu_settings.hex
+pca10040/s132/armgcc/settings_dfu.hex
+*.zip
+*.log
+*.local
