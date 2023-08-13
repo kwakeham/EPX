@@ -1,9 +1,12 @@
 /**
- * Copyright (c) 2018-2023 Titan Lab Inc.
- *
- * All rights reserved.
- *
- *
+ * @file mpos.h
+ * @author Keith Wakeham (keith@titanlab.co)
+ * @brief header for mpos.c
+ * @version 0.1
+ * @date 2023-08-12
+ * 
+ * @copyright Copyright (c) 2023
+ * 
  */
 
 #ifndef MPOS_H
@@ -27,7 +30,7 @@ int16_t mpos_test_convert(void);
 
 void mpos_convert(void);
 
-float  angle(int16_t hall_0, int16_t hall_1);
+float angle(int16_t hall_0, int16_t hall_1);
 
 void display_value(void);
 

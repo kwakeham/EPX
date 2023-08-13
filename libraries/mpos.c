@@ -1,9 +1,12 @@
 /**
- * Copyright (c) 2018-2023 Titan Lab Inc.
- *
- * All rights reserved.
- *
- *
+ * @file mpos.c
+ * @author Keith Wakeham (keith@titanlab.co)
+ * @brief This uses the ADC to get the motor positions but auxillary function of getting the the motor current
+ * @version 0.1
+ * @date 2023-08-12
+ * 
+ * @copyright Copyright (c) 2023
+ * 
  */
 
 #include "mpos.h"
@@ -36,22 +39,22 @@ void mpos_init(void)
     ret_code_t err_code;
     nrfx_saadc_config_t saadc_config;
     saadc_config.resolution = NRF_SAADC_RESOLUTION_12BIT; //need to manually set the resolution or else it'll default to 8 bit
-    // saadc_config.oversample = NRF_SAADC_OVERSAMPLE_DISABLED; // default is 4 sample over sampling so need to override that.
-    saadc_config.oversample = NRF_SAADC_OVERSAMPLE_8X; // default is 4 sample over sampling so need to override that.
+    saadc_config.oversample = NRF_SAADC_OVERSAMPLE_DISABLED; // default is 4 sample over sampling so need to override that.
+    // saadc_config.oversample = NRF_SAADC_OVERSAMPLE_8X; // default is 4 sample over sampling so need to override that.
     saadc_config.interrupt_priority = 5; //Hmmm?
     saadc_config.low_power_mode = false;
 
     err_code = nrfx_saadc_init(&saadc_config, saadc_callback);
     APP_ERROR_CHECK(err_code);
 
-    nrf_saadc_channel_config_t channel_config_sin = NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN0); //Real = Ain4
-    channel_config_sin.gain = NRF_SAADC_GAIN1_5; // this is measured against either vdd/4 or vcore = 0.6v.
+    nrf_saadc_channel_config_t channel_config_sin = NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN2); //Real = Ain4
+    channel_config_sin.gain = NRF_SAADC_GAIN1_4; // this is measured against either vdd/4 or vcore = 0.6v.
 
-    nrf_saadc_channel_config_t channel_config_cos = NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN2); //Real = Ain5
-    channel_config_cos.gain = NRF_SAADC_GAIN1_5; // this is measured against either vdd/4 or vcore = 0.6v.
+    nrf_saadc_channel_config_t channel_config_cos = NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN0); //Real = Ain5
+    channel_config_cos.gain = NRF_SAADC_GAIN1_4; // this is measured against either vdd/4 or vcore = 0.6v.
 
     nrf_saadc_channel_config_t channel_config_isense = NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN1); //Real = Ain5
-    channel_config_cos.gain = NRF_SAADC_GAIN1_5; // this is measured against either vdd/4 or vcore = 0.6v.
+    channel_config_cos.gain = NRF_SAADC_GAIN1_4; // this is measured against either vdd/4 or vcore = 0.6v.
 
     nrfx_saadc_channel_init(0, &channel_config_sin);
     APP_ERROR_CHECK(err_code);
@@ -62,8 +65,8 @@ void mpos_init(void)
     nrfx_saadc_channel_init(3, &channel_config_isense);
     APP_ERROR_CHECK(err_code);
 
-    err_code = nrfx_saadc_buffer_convert(m_buffer_pool, 3);
-    APP_ERROR_CHECK(err_code);
+    // err_code = nrfx_saadc_buffer_convert(m_buffer_pool, 3);
+    // APP_ERROR_CHECK(err_code);
 
     nrf_gpio_cfg_output(S_HALL_EN);
     nrf_gpio_pin_clear(S_HALL_EN);
@@ -125,6 +128,6 @@ void display_value(void)
 {
     // angle(m_buffer_pool[0], m_buffer_pool(1));
     double temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
-    NRF_LOG_INFO("%d, %d, %i, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],rotation_count,NRF_LOG_FLOAT(temp_angle));
+    NRF_LOG_INFO("%d, %d, %i, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],m_buffer_pool[2],NRF_LOG_FLOAT(temp_angle));
     NRF_LOG_FLUSH();
 }
