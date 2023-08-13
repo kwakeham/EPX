@@ -99,13 +99,9 @@ SRC_FILES += \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh_soc.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_spim.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_timer.c \
-  $(PROJ_DIR)/drivers/max11254.c \
   $(PROJ_DIR)/titan_mem.c \
-  $(PROJ_DIR)/mxc.c \
-  $(PROJ_DIR)/tmp117.c \
-  $(PROJ_DIR)/hf_time.c \
+  $(PROJ_DIR)/libraries/mpos.c \
   $(PROJ_DIR)/libraries/data_handler.c \
-  $(PROJ_DIR)/lsm6dsm.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
