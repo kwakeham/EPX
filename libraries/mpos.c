@@ -39,34 +39,38 @@ void mpos_init(void)
     ret_code_t err_code;
     nrfx_saadc_config_t saadc_config;
     saadc_config.resolution = NRF_SAADC_RESOLUTION_12BIT; //need to manually set the resolution or else it'll default to 8 bit
-    saadc_config.oversample = NRF_SAADC_OVERSAMPLE_DISABLED; // default is 4 sample over sampling so need to override that.
-    // saadc_config.oversample = NRF_SAADC_OVERSAMPLE_8X; // default is 4 sample over sampling so need to override that.
+    // saadc_config.oversample = NRF_SAADC_OVERSAMPLE_DISABLED; // default is 4 sample over sampling so need to override that.
+    saadc_config.oversample = NRF_SAADC_OVERSAMPLE_4X; // default is 4 sample over sampling so need to override that.
     saadc_config.interrupt_priority = 5; //Hmmm?
     saadc_config.low_power_mode = false;
 
     err_code = nrfx_saadc_init(&saadc_config, saadc_callback);
     APP_ERROR_CHECK(err_code);
 
-    nrf_saadc_channel_config_t channel_config_sin = NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN2); //Real = Ain4
-    channel_config_sin.gain = NRF_SAADC_GAIN1_4; // this is measured against either vdd/4 or vcore = 0.6v.
+    nrf_saadc_channel_config_t chan_config = {
+        NRF_SAADC_RESISTOR_DISABLED,                //P
+        NRF_SAADC_RESISTOR_DISABLED,                //N
+        NRF_SAADC_GAIN1_4,
+        NRF_SAADC_REFERENCE_VDD4,
+        NRF_SAADC_ACQTIME_40US,
+        NRF_SAADC_MODE_SINGLE_ENDED,
+        NRF_SAADC_BURST_ENABLED,                    //required tofor auto - oversampling
+        NRF_SAADC_INPUT_DISABLED,   
+        NRF_SAADC_INPUT_DISABLED
+    };
 
-    nrf_saadc_channel_config_t channel_config_cos = NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN0); //Real = Ain5
-    channel_config_cos.gain = NRF_SAADC_GAIN1_4; // this is measured against either vdd/4 or vcore = 0.6v.
 
-    nrf_saadc_channel_config_t channel_config_isense = NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN1); //Real = Ain5
-    channel_config_cos.gain = NRF_SAADC_GAIN1_4; // this is measured against either vdd/4 or vcore = 0.6v.
-
-    nrfx_saadc_channel_init(0, &channel_config_sin);
+    chan_config.pin_p = NRF_SAADC_INPUT_AIN2; //sin
+    nrfx_saadc_channel_init(0, &chan_config);
     APP_ERROR_CHECK(err_code);
 
-    nrfx_saadc_channel_init(1, &channel_config_cos);
+    chan_config.pin_p = NRF_SAADC_INPUT_AIN0; //cos
+    nrfx_saadc_channel_init(1, &chan_config);
     APP_ERROR_CHECK(err_code);
 
-    nrfx_saadc_channel_init(3, &channel_config_isense);
+    chan_config.pin_p = NRF_SAADC_INPUT_AIN1; //isense
+    nrfx_saadc_channel_init(3, &chan_config);
     APP_ERROR_CHECK(err_code);
-
-    // err_code = nrfx_saadc_buffer_convert(m_buffer_pool, 3);
-    // APP_ERROR_CHECK(err_code);
 
     nrf_gpio_cfg_output(S_HALL_EN);
     nrf_gpio_pin_clear(S_HALL_EN);
