@@ -139,7 +139,19 @@ int main(void)
 
     // lis2dtw_start();
 
+    app_timer_init();
+
     ble_cus_init();
+
+    mpos_init();
+
+    nrf_delay_ms(1);
+
+    mpos_convert();
+
+    nrf_delay_ms(100);
+
+    display_value();
 
     // Enter main loop.
     for (;;)
