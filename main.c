@@ -94,15 +94,10 @@
 
 #include "ble_app_esb_common.h"
 #include "ble_cus.h"
-#include "max11254.h"
 // #include "lis2dtw.h"
-#include "mxc.h"
-#include "tmp117.h"
-#include "lsm6dsm.h"
-#include "hf_time.h"
-// #include "crm100.h"
 #include "titan_mem.h"
 #include "data_handler.h"
+#include "mpos.h"
 
 
 
@@ -142,55 +137,13 @@ int main(void)
 
     log_init();
 
-    // lsm6dsm_init();
-
-    // lsm6dsm_start();
-
-    max_init();
-
-
-    // drv_mxc_init();
-    // drv_mxc_powerup();
-    // drv_mxc_start();
-    // drv_mxc_uninit();
-    // drv_mxc_readall();
-    // drv_mxc_init();
-    // drv_mxc_powerdown();
-    // drv_mxc_uninit();
-
-    // tmp117_twi_init();
-    // tmp117_start();
-    // tmp117_twi_uninit();
-
-    
-    // max_start();
-
-    // max_shutdown();
-
-
-    // lis2dtw_init();
-
-    // lis2dtw_motion_wake(); //sets motion wake
-
-
-    // tm_fds_init();
-    
-    // tm_fds_config_init();
-
-
     // lis2dtw_start();
 
-    // nrf_pwr_mgmt_shutdown(NRF_PWR_MGMT_SHUTDOWN_GOTO_SYSOFF);
-
     ble_cus_init();
-    // hf_time_init();
-    // max_req_startup();
 
     // Enter main loop.
     for (;;)
     {
-        MAX_sch_execute();
-        // lsm6dsm_task();
         data_handler_sch_execute();
         idle_state_handle();
     }

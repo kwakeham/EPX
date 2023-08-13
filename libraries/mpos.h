@@ -21,13 +21,13 @@ extern "C" {
 
 void saadc_callback(nrfx_saadc_evt_t const * p_event);
 
-void steer_init(void);
+void mpos_init(void);
 
 int16_t mpos_test_convert(void);
 
-void mpos_test_convert_event_activate(void);
+void mpos_convert(void);
 
-double angle(int16_t hall_0, int16_t hall_1);
+float  angle(int16_t hall_0, int16_t hall_1);
 
 void display_value(void);
 
