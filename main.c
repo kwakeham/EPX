@@ -145,11 +145,12 @@ int main(void)
 
     mpos_init();
 
-    nrf_delay_ms(1);
+    // nrf_delay_ms(1);
+    nrf_delay_us(1000);
 
     mpos_convert();
 
-    nrf_delay_ms(100);
+    nrf_delay_ms(200);
 
     display_value();
 
