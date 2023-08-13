@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018 Keith Wakeham
+ * Copyright (c) 2018-2023 Titan Lab Inc.
  *
  * All rights reserved.
  *
@@ -116,10 +116,9 @@ void mpos_init(void)
     err_code = nrfx_saadc_buffer_convert(&m_buffer_pool[1], 1);
     APP_ERROR_CHECK(err_code);
 
+
     nrf_gpio_cfg_output(S_HALL_EN);
-
     nrf_gpio_pin_clear(S_HALL_EN);
-
 
     // err_code = nrfx_saadc_buffer_convert(&m_buffer_pool_cos, 1);
     // APP_ERROR_CHECK(err_code);
@@ -149,16 +148,16 @@ void mpos_test_convert_event_activate(void)
     APP_ERROR_CHECK(err_code);
     if (err_code == NRFX_ERROR_INVALID_STATE)
     {
-        NRF_LOG_ERROR("fuck sake \r\n");
+        NRF_LOG_ERROR("Event did not complete \r\n");
     }
     
     
 }
 
-double angle(int16_t hall_0, int16_t hall_1)
+float angle(int16_t hall_0, int16_t hall_1)
 {
-    double rotation_angle;
-    rotation_angle = (atan2((double)(hall_0-count_offset),(double)(hall_1-count_offset))*180/3.14159265359)+180 ;
+    float rotation_angle;
+    rotation_angle = (atan2f((float)(hall_0-count_offset),(float)(hall_1-count_offset))*180/3.14159265359)+180 ;
     if (angle_old > rotation_angle)
     {
         if ((angle_old- rotation_angle) > 180.0)
