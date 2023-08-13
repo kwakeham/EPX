@@ -1,4 +1,13 @@
-
+/**
+ * @file ble_cus.c
+ * @author Keith Wakeham (keith@titanlab.co)
+ * @brief BLE custom based on ble uart, workin in progress
+ * @version 0.1
+ * @date 2023-08-12
+ * 
+ * @copyright Copyright (c) 2023
+ * 
+ */
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
