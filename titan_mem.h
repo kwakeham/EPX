@@ -37,9 +37,9 @@ typedef struct
     float C2_thermal_m;
     float C3_thermal_m;
     float C4_thermal_m;
-} brv_configuration_t;
+} epx_configuration_t;
 
-brv_configuration_t tm_fds_brv_config ();
+epx_configuration_t tm_fds_epx_config ();
 
 void tm_fds_init();
 
@@ -54,6 +54,6 @@ void tm_fds_config_init();
 
 void tm_fds_config_update();
 
-void mem_brv_update(brv_configuration_t config_towrite);
+void mem_epx_update(epx_configuration_t config_towrite);
 
 #endif

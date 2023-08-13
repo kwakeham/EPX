@@ -62,7 +62,7 @@ int32_t max_average_count = 0;
 
 bool data_process_command = false;
 
-brv_configuration_t cal_factors;
+epx_configuration_t cal_factors;
 //calculated active zero
 int32_t active_zero[6] = {0,0,0,0,0,0};
 bool calculate_az = false; //should we calculate the active zero. True = yes.
@@ -520,14 +520,14 @@ void data_handler_sch_execute(void)
     if(update_flash)
     {
         update_flash = false;
-        mem_brv_update(cal_factors);
+        mem_epx_update(cal_factors);
     }
 
 }
 
 void data_handler_get_flash_calibration(void)
 {
-    cal_factors = tm_fds_brv_config();
+    cal_factors = tm_fds_epx_config();
 
 }
 

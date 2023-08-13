@@ -75,7 +75,7 @@ static struct
 } m_delete_all;
 
 /* Configuration data. */
-static brv_configuration_t m_brv_cfg =
+static epx_configuration_t m_epx_cfg =
 {
     .CH1_zero  = 0,
     .CH2_zero  = 0,
@@ -100,13 +100,13 @@ static brv_configuration_t m_brv_cfg =
 };
 
 /* A record containing configuration data. */
-static fds_record_t const m_brv_record =
+static fds_record_t const m_epx_record =
 {
     .file_id           = FILE_ID,
     .key               = RECORD_KEY_1,
-    .data.p_data       = &m_brv_cfg,
+    .data.p_data       = &m_epx_cfg,
     /* The length of a record is always expressed in 4-byte units (words). */
-    .data.length_words = (sizeof(m_brv_cfg)+3) / sizeof(uint32_t), //+3 for rounding
+    .data.length_words = (sizeof(m_epx_cfg)+3) / sizeof(uint32_t), //+3 for rounding
 };
 
 
@@ -216,9 +216,9 @@ void tm_fds_test_write()
     }
 }
 
-brv_configuration_t tm_fds_brv_config (void)
+epx_configuration_t tm_fds_epx_config (void)
 {
-    return m_brv_cfg;
+    return m_epx_cfg;
 }
 
 void tm_fds_test_retrieve()
@@ -238,7 +238,7 @@ void tm_fds_test_retrieve()
             /* Handle error. */
         }
         /* Access the record through the flash_record structure. */
-        memcpy(&test_data, flash_record.p_data, sizeof(brv_configuration_t));
+        memcpy(&test_data, flash_record.p_data, sizeof(epx_configuration_t));
 
         NRF_LOG_INFO("The record is: %d",test_data);
         /* Close the record when done. */
@@ -285,14 +285,14 @@ void tm_fds_config_init()
         rc = fds_record_open(&desc, &config);
         APP_ERROR_CHECK(rc);
 
-        /* Copy the configuration from flash into m_brv_cfg. */
-        memcpy(&m_brv_cfg, config.p_data, sizeof(brv_configuration_t));
+        /* Copy the configuration from flash into m_epx_cfg. */
+        memcpy(&m_epx_cfg, config.p_data, sizeof(epx_configuration_t));
 
         /* Close the record when done reading. */
         rc = fds_record_close(&desc);
         APP_ERROR_CHECK(rc);
         // char tm_debug_message[20];
-        // sprintf(tm_debug_message,"%ld, %.5f",m_brv_cfg.zero, m_brv_cfg.calibration);
+        // sprintf(tm_debug_message,"%ld, %.5f",m_epx_cfg.zero, m_epx_cfg.calibration);
         // NRF_LOG_INFO("%s",tm_debug_message);
     }
     else
@@ -300,7 +300,7 @@ void tm_fds_config_init()
         /* System config not found; write a new one. */
         NRF_LOG_INFO("Writing config file...");
 
-        rc = fds_record_write(&desc, &m_brv_record);
+        rc = fds_record_write(&desc, &m_epx_record);
         APP_ERROR_CHECK(rc);
     }
 }
@@ -342,17 +342,17 @@ void tm_fds_config_update()
     {
         //debug info
         // char tm_debug_message[20];
-        // sprintf(tm_debug_message,"%ld, %.5f \n",m_brv_cfg.zero, m_brv_cfg.calibration);
+        // sprintf(tm_debug_message,"%ld, %.5f \n",m_epx_cfg.zero, m_epx_cfg.calibration);
         // NRF_LOG_INFO("%s",tm_debug_message);
 
-        rc = fds_record_update(&desc, &m_brv_record);
+        rc = fds_record_update(&desc, &m_epx_record);
         APP_ERROR_CHECK(rc);
     }
     else
     {
         /* System config not found; write a new one. */
         NRF_LOG_INFO("Writing config file...");
-        rc = fds_record_write(&desc, &m_brv_record);
+        rc = fds_record_write(&desc, &m_epx_record);
         APP_ERROR_CHECK(rc);
     }
 }
@@ -398,8 +398,8 @@ static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt)
     }
 }
 
-void mem_brv_update(brv_configuration_t config_towrite)
+void mem_epx_update(epx_configuration_t config_towrite)
 {
-    m_brv_cfg = config_towrite;
+    m_epx_cfg = config_towrite;
     tm_fds_config_update();
 }
