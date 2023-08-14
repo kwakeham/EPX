@@ -13,16 +13,20 @@
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "boards.h"
+#include "app_timer.h"
 
-#define count_offset 2350 //3.3v
+// #define count_offset 2350 //3.3v
+#define count_offset 2048 //Half?
 static nrf_saadc_value_t m_buffer_pool[3];
 static uint8_t rotation_count = 0;
 static double angle_old;
 
+APP_TIMER_DEF(m_repeat_action);
+
 void saadc_callback(nrfx_saadc_evt_t const * p_event)
 {
 
-    if (p_event->type == NRFX_SAADC_EVT_DONE)                                                        //Capture offset calibration complete event
+    if (p_event->type == NRFX_SAADC_EVT_DONE) //Capture offset calibration complete event
     {
  
     }
@@ -30,6 +34,11 @@ void saadc_callback(nrfx_saadc_evt_t const * p_event)
     {
         
     }
+}
+
+void mpos_timer_handler(void *p_context)
+{
+    mpos_convert(); //do a converstion
 }
 
 
@@ -54,12 +63,13 @@ void mpos_init(void)
         NRF_SAADC_REFERENCE_VDD4,
         NRF_SAADC_ACQTIME_40US,
         NRF_SAADC_MODE_SINGLE_ENDED,
-        NRF_SAADC_BURST_ENABLED,                    //required tofor auto - oversampling
+        NRF_SAADC_BURST_ENABLED,                    //required to for auto - oversampling
         NRF_SAADC_INPUT_DISABLED,   
         NRF_SAADC_INPUT_DISABLED
     };
 
-
+    //Some interesting behaviour here. If you use identical configurations and init channels, you can't oversample using burst mode
+    //But if you use the same channel config you can. Remember BURST = 1 and Multiple channels to capture averaged.
     chan_config.pin_p = NRF_SAADC_INPUT_AIN2; //sin
     nrfx_saadc_channel_init(0, &chan_config);
     APP_ERROR_CHECK(err_code);
@@ -72,9 +82,15 @@ void mpos_init(void)
     nrfx_saadc_channel_init(3, &chan_config);
     APP_ERROR_CHECK(err_code);
 
+    //mpositoin timer
+    err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
+    APP_ERROR_CHECK(err_code);
+    err_code = app_timer_start(m_repeat_action, 3277, NULL); 
+    APP_ERROR_CHECK(err_code);
+
     nrf_gpio_cfg_output(S_HALL_EN);
     nrf_gpio_pin_clear(S_HALL_EN);
-    
+   
 }
 
 int16_t mpos_test_convert(void)
@@ -128,7 +144,7 @@ float angle(int16_t hall_0, int16_t hall_1)
     return(rotation_angle);
 }
 
-void display_value(void)
+void mpos_display_value(void)
 {
     // angle(m_buffer_pool[0], m_buffer_pool(1));
     double temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
