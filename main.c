@@ -152,11 +152,12 @@ int main(void)
 
     nrf_delay_ms(200);
 
-    display_value();
+    mpos_display_value();
 
     // Enter main loop.
     for (;;)
     {
+        // mpos_display_value();
         data_handler_sch_execute();
         idle_state_handle();
     }

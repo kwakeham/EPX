@@ -32,7 +32,7 @@ void mpos_convert(void);
 
 float angle(int16_t hall_0, int16_t hall_1);
 
-void display_value(void);
+void mpos_display_value(void);
 
 #ifdef __cplusplus
 }
