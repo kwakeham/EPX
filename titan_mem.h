@@ -17,6 +17,22 @@
 /* A dummy structure to save in flash. */
 typedef struct
 {
+    //Configuration
+    int32_t num_gears;
+    int32_t gear1_pos;
+
+    //sleep restore data
+    int32_t sleep_rotations;
+    int32_t sleep_angle;
+
+    //Historic data
+    uint32_t upshifts;
+    uint32_t downshifts;
+
+    int16_t sin_min;
+    int16_t sin_max;
+    int16_t cos_min;
+    int16_t cos_max;
     int32_t CH1_zero;
     int32_t CH2_zero;
     int32_t CH3_zero;
