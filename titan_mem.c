@@ -21,7 +21,7 @@
 #define MEM_START 0x70000
 #define MEM_END 0x71fff
 #define FILE_ID         0x0001  /* The ID of the file to write the records into. */
-#define RECORD_KEY_1    0x1111  /* A key for the first record. */
+#define RECORD_KEY_1    0x1234  /* A key for the first record. */
 static uint32_t   const m_deadbeef = 0xDEADBEEF;
 // static char       const m_hello[]  = "Hello, world!";
 fds_record_t        record;
@@ -77,6 +77,17 @@ static struct
 /* Configuration data. */
 static epx_configuration_t m_epx_cfg =
 {
+    .num_gears = 0;
+    .gear1_pos = 0;
+    .sleep_rotations = 0;
+    .sleep_angle = 0;
+    .upshifts = 0;
+    .downshifts = 0;
+    .sin_min = 0;
+    .sin_max = 0;
+    .cos_min = 0;
+    .cos_max = 0;
+
     .CH1_zero  = 0,
     .CH2_zero  = 0,
     .CH3_zero  = 0,
