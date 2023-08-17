@@ -17,7 +17,7 @@
 #include "nrf_delay.h"
 
 // #define count_offset 2350 //3.3v
-#define default_sin_cos_offset 2048 //Half?
+#define default_sin_cos_offset 2078 //Half?
 #define default_range 50
 static nrf_saadc_value_t m_buffer_pool[3];
 
