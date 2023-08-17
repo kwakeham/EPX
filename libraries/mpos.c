@@ -14,10 +14,24 @@
 #include "nrf_log_ctrl.h"
 #include "boards.h"
 #include "app_timer.h"
+#include "nrf_delay.h"
 
 // #define count_offset 2350 //3.3v
-#define count_offset 2048 //Half?
+#define default_sin_cos_offset 2048 //Half?
+#define default_range 50
 static nrf_saadc_value_t m_buffer_pool[3];
+
+static nrf_saadc_value_t sin_cos[2]; //stores the current value of sin in sin_cos[0] and cos in sin_cos[1]
+
+//these are broken out to individual values because I think it'll be easier to understand
+static nrf_saadc_value_t sin_min = 32767;
+static nrf_saadc_value_t sin_max;
+static nrf_saadc_value_t cos_min = 32767;
+static nrf_saadc_value_t cos_max;
+
+static nrf_saadc_value_t sin_avg;
+static nrf_saadc_value_t cos_avg;
+
 static uint8_t rotation_count = 0;
 static double angle_old;
 
@@ -32,7 +46,7 @@ void saadc_callback(nrfx_saadc_evt_t const * p_event)
     }
     else if (p_event->type == NRFX_SAADC_EVT_CALIBRATEDONE)
     {
-        
+        NRF_LOG_INFO("Calibration complete");
     }
 }
 
@@ -82,6 +96,9 @@ void mpos_init(void)
     nrfx_saadc_channel_init(3, &chan_config);
     APP_ERROR_CHECK(err_code);
 
+    nrfx_saadc_calibrate_offset();
+    nrf_delay_ms(20);
+
     //mpositoin timer
     err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
     APP_ERROR_CHECK(err_code);
@@ -122,15 +139,46 @@ void mpos_convert(void)
     }
 }
 
+int16_t mpos_average(int16_t min, int16_t max, int16_t range, int16_t defaultValue) {
+    int16_t temp_average = (min + max + 1)/2; //average out and hold in temp
+    int16_t minRange = defaultValue - range;
+    int16_t maxRange = defaultValue + range;
+    if (temp_average < minRange || temp_average > maxRange) {
+        return defaultValue;
+    }
+    return temp_average;
+}
+
 void mpos_min_max(void)
 {
+    //finds new min or max
+    if(sin_cos[0]>sin_max)
+    {
+        sin_max = sin_cos[0];
+    }
+    if(sin_cos[0]<sin_min)
+    {
+        sin_min = sin_cos[0];
+    }
+    if(sin_cos[1]>cos_max)
+    {
+        cos_max = sin_cos[1];
+    }
+    if(sin_cos[1]<cos_min)
+    {
+        cos_min = sin_cos[1];
+    }
 
+    sin_avg = mpos_average(sin_min, sin_max, default_range, default_sin_cos_offset);
+    cos_avg = mpos_average(cos_min, cos_max, default_range, default_sin_cos_offset);
+    
 }
+
 
 float angle(int16_t hall_0, int16_t hall_1)
 {
     float rotation_angle;
-    rotation_angle = (atan2f((float)(hall_0-count_offset),(float)(hall_1-count_offset))*180/3.14159265359)+180 ;
+    rotation_angle = (atan2f((float)(hall_0-sin_avg),(float)(hall_1-cos_avg))*180/3.14159265359)+180 ;
     if (angle_old > rotation_angle)
     {
         if ((angle_old- rotation_angle) > 180.0)
@@ -153,6 +201,12 @@ void mpos_display_value(void)
 {
     // angle(m_buffer_pool[0], m_buffer_pool(1));
     double temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
-    NRF_LOG_INFO("%d, %d, %i, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],m_buffer_pool[2],NRF_LOG_FLOAT(temp_angle));
+    sin_cos[0] = m_buffer_pool[0];
+    sin_cos[1] = m_buffer_pool[1];
+    temp_angle += 1;
+    // double temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
+    mpos_min_max();
+    NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],rotation_count,NRF_LOG_FLOAT(temp_angle));
+    // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
     NRF_LOG_FLUSH();
 }

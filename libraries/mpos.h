@@ -24,11 +24,40 @@ extern "C" {
 
 void saadc_callback(nrfx_saadc_evt_t const * p_event);
 
+/**
+ * @brief Initialize the SAADC and setup oversampling and burst
+ * 
+ */
 void mpos_init(void);
 
+/**
+ * @brief Will be removed, test conversion and write
+ * 
+ * @return int16_t 
+ */
 int16_t mpos_test_convert(void);
 
+/**
+ * @brief Request a conversion request
+ * 
+ */
 void mpos_convert(void);
+
+/**
+ * @brief 
+ * 
+ * @param min 
+ * @param max 
+ * @param defaultValue 
+ * @return int 
+ */
+int16_t mpos_average(int16_t min, int16_t max, int16_t range, int16_t defaultValue);
+
+/**
+ * @brief Calculates and updates the min/max values
+ * 
+ */
+void mpos_min_max(void);
 
 float angle(int16_t hall_0, int16_t hall_1);
 
