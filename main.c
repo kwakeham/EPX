@@ -157,7 +157,7 @@ int main(void)
     // Enter main loop.
     for (;;)
     {
-        // mpos_display_value();
+        mpos_display_value();
         data_handler_sch_execute();
         idle_state_handle();
     }
