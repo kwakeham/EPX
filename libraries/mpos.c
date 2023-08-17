@@ -112,14 +112,19 @@ int16_t mpos_test_convert(void)
 void mpos_convert(void)
 {
     ret_code_t err_code;
-    err_code = nrfx_saadc_buffer_convert(m_buffer_pool, 3);
+    err_code = nrfx_saadc_buffer_convert(m_buffer_pool, 3); //setup the buffer to convert
     APP_ERROR_CHECK(err_code);
-    err_code = nrfx_saadc_sample();
+    err_code = nrfx_saadc_sample(); //actually sample with interrupt
     APP_ERROR_CHECK(err_code);
     if (err_code == NRFX_ERROR_INVALID_STATE)
     {
         NRF_LOG_ERROR("Event did not complete \r\n");
     }
+}
+
+void mpos_min_max(void)
+{
+
 }
 
 float angle(int16_t hall_0, int16_t hall_1)
