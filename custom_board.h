@@ -17,10 +17,12 @@ extern "C" {
 //TEST
 
 #define M_EN 6
+#define M_IN1 6
 #define M_Phase 7
-#define M_Mode 8
+#define M_IN2 7
+#define M_PMode 8 //this is called P-mode in the docs, thats important
 #define M_nSleep 9
-#define M_nFault 5
+#define M_nFault 5 // this is read
 
 #define M_ISENSE    3 //AIN1
 
