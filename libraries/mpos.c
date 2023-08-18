@@ -75,7 +75,7 @@ void mpos_init(void)
         NRF_SAADC_RESISTOR_DISABLED,                //N
         NRF_SAADC_GAIN1_4,
         NRF_SAADC_REFERENCE_VDD4,
-        NRF_SAADC_ACQTIME_40US,
+        NRF_SAADC_ACQTIME_10US,
         NRF_SAADC_MODE_SINGLE_ENDED,
         NRF_SAADC_BURST_ENABLED,                    //required to for auto - oversampling
         NRF_SAADC_INPUT_DISABLED,   
