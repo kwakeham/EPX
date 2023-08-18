@@ -32,7 +32,7 @@ static nrf_saadc_value_t cos_max;
 static nrf_saadc_value_t sin_avg;
 static nrf_saadc_value_t cos_avg;
 
-static uint8_t rotation_count = 0;
+static int8_t rotation_count = 0;
 static double angle_old;
 
 APP_TIMER_DEF(m_repeat_action);
