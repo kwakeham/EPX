@@ -93,8 +93,13 @@ static epx_configuration_t m_epx_cfg =
     .gear13_pos = 0,
     .gear14_pos = 0,
 
+    .Kp = 0.0f,
+    .Ki = 0.0f,
+    .Kd = 0.0f,
+
     .sleep_rotations = 0,
     .sleep_angle = 0,
+    .sleep_gear = 0,
 
     .upshifts = 0,
     .downshifts = 0,

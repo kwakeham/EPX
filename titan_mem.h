@@ -20,6 +20,7 @@ typedef struct
     //Configuration
     int32_t num_gears;
     
+    //gear settings
     int32_t gear1_pos;
     int32_t gear2_pos;
     int32_t gear3_pos;
@@ -35,10 +36,15 @@ typedef struct
     int32_t gear13_pos;
     int32_t gear14_pos;
    
+    //PID Gains
+    float Kp;
+    float Ki;
+    float Kd;
 
     //sleep restore data
     int32_t sleep_rotations;
     int32_t sleep_angle;
+    uint8_t sleep_gear;
 
     //Historic data
     uint32_t upshifts;
