@@ -19,7 +19,22 @@ typedef struct
 {
     //Configuration
     int32_t num_gears;
+    
     int32_t gear1_pos;
+    int32_t gear2_pos;
+    int32_t gear3_pos;
+    int32_t gear4_pos;
+    int32_t gear5_pos;
+    int32_t gear6_pos;
+    int32_t gear7_pos;
+    int32_t gear8_pos;
+    int32_t gear9_pos;
+    int32_t gear10_pos;
+    int32_t gear11_pos;
+    int32_t gear12_pos;
+    int32_t gear13_pos;
+    int32_t gear14_pos;
+   
 
     //sleep restore data
     int32_t sleep_rotations;

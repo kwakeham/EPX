@@ -77,16 +77,32 @@ static struct
 /* Configuration data. */
 static epx_configuration_t m_epx_cfg =
 {
-    .num_gears = 0;
-    .gear1_pos = 0;
-    .sleep_rotations = 0;
-    .sleep_angle = 0;
-    .upshifts = 0;
-    .downshifts = 0;
-    .sin_min = 0;
-    .sin_max = 0;
-    .cos_min = 0;
-    .cos_max = 0;
+    .num_gears = 0,
+    .gear1_pos = 0,
+    .gear2_pos = 0,
+    .gear3_pos = 0,
+    .gear4_pos = 0,
+    .gear5_pos = 0,
+    .gear6_pos = 0,
+    .gear7_pos = 0,
+    .gear8_pos = 0,
+    .gear9_pos = 0,
+    .gear10_pos = 0,
+    .gear11_pos = 0,
+    .gear12_pos = 0,
+    .gear13_pos = 0,
+    .gear14_pos = 0,
+
+    .sleep_rotations = 0,
+    .sleep_angle = 0,
+
+    .upshifts = 0,
+    .downshifts = 0,
+
+    .sin_min = 0,
+    .sin_max = 0,
+    .cos_min = 0,
+    .cos_max = 0,
 
     .CH1_zero  = 0,
     .CH2_zero  = 0,
