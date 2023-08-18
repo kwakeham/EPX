@@ -99,7 +99,7 @@ void mpos_init(void)
     nrfx_saadc_calibrate_offset();
     nrf_delay_ms(20);
 
-    //mpositoin timer
+    //motor position timer, this is 10hz but really this will be 100 - 200 hz... or more likely 128 or 256, because 2^ maths
     err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
     APP_ERROR_CHECK(err_code);
     err_code = app_timer_start(m_repeat_action, 3277, NULL); 
@@ -112,13 +112,13 @@ void mpos_init(void)
 
 int16_t mpos_test_convert(void)
 {
-    nrf_saadc_value_t duckman;
+    nrf_saadc_value_t tempvalue;
     ret_code_t err_code;
-    err_code = nrfx_saadc_sample_convert(0, &duckman);
+    err_code = nrfx_saadc_sample_convert(0, &tempvalue);
     
     if (err_code == NRFX_SUCCESS)
     {
-        return(duckman);
+        return(tempvalue);
     } else
     {
         return (-8008);
