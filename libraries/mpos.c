@@ -15,6 +15,7 @@
 #include "boards.h"
 #include "app_timer.h"
 #include "nrf_delay.h"
+#include "drv8874.h"
 
 // #define count_offset 2350 //3.3v
 #define default_sin_cos_offset 2078 //Half?
@@ -209,4 +210,5 @@ void mpos_display_value(void)
     NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],rotation_count,NRF_LOG_FLOAT(temp_angle));
     // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
     NRF_LOG_FLUSH();
+    drv8874_drive((int16_t)temp_angle-180);
 }
