@@ -98,6 +98,7 @@
 #include "titan_mem.h"
 #include "data_handler.h"
 #include "mpos.h"
+#include "drv8874.h"
 
 
 
@@ -144,6 +145,7 @@ int main(void)
     ble_cus_init();
 
     mpos_init();
+    drv8874_init();
 
     // nrf_delay_ms(1);
     nrf_delay_us(1000);
