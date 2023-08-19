@@ -100,10 +100,12 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_spim.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_timer.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_saadc.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_pwm.c \
   $(PROJ_DIR)/titan_mem.c \
   $(PROJ_DIR)/libraries/mpos.c \
   $(PROJ_DIR)/libraries/PID_controller.c \
   $(PROJ_DIR)/libraries/data_handler.c \
+  $(PROJ_DIR)/drivers/drv8874.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
