@@ -55,26 +55,6 @@ typedef struct
     int16_t cos_min;
     int16_t cos_max;
 
-    int32_t CH1_zero;
-    int32_t CH2_zero;
-    int32_t CH3_zero;
-    int32_t CH4_zero;
-    float C1x_cal;
-    float C2x_cal;
-    float C3x_cal;
-    float C4x_cal;
-    float C1y_cal;
-    float C2y_cal;
-    float C3y_cal;
-    float C4y_cal;
-    int32_t CH1_thermal_b;
-    int32_t CH2_thermal_b;
-    int32_t CH3_thermal_b;
-    int32_t CH4_thermal_b;
-    float C1_thermal_m;
-    float C2_thermal_m;
-    float C3_thermal_m;
-    float C4_thermal_m;
 } epx_configuration_t;
 
 epx_configuration_t tm_fds_epx_config ();

@@ -109,26 +109,7 @@ static epx_configuration_t m_epx_cfg =
     .cos_min = 0,
     .cos_max = 0,
 
-    .CH1_zero  = 0,
-    .CH2_zero  = 0,
-    .CH3_zero  = 0,
-    .CH4_zero  = 0,
-    .C1x_cal  = 0,
-    .C2x_cal  = 0,
-    .C3x_cal  = 0,
-    .C4x_cal  = 0,
-    .C1y_cal  = 0,
-    .C2y_cal  = 0,
-    .C3y_cal  = 0,
-    .C4y_cal  = 0,
-    .CH1_thermal_b  = 0,
-    .CH2_thermal_b  = 0,
-    .CH3_thermal_b  = 0,
-    .CH4_thermal_b  = 0,
-    .C1_thermal_m  = 0,
-    .C2_thermal_m  = 0,
-    .C3_thermal_m  = 0,
-    .C4_thermal_m  = 0,
+
 };
 
 /* A record containing configuration data. */
