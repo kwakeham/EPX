@@ -18,17 +18,21 @@
 
 
 // PID Controller parameters
-#define Kp 1.0   // Proportional gain
-#define Ki 0.1   // Integral gain
-#define Kd 0.01  // Derivative gain
+#define Kp 20.0   // Proportional gain
+#define Ki 0   // Integral gain
+#define Kd 0  // Derivative gain
 
 // PID Controller state variables
 double previousError = 0.0;
 double integral = 0.0;
 
 // Integral limits
-double integralMin = -10.0;
-double integralMax = 10.0;
+double integralMax = 20.0;
+double integralMin = -20.0;
+
+// Control limits
+double ControlMax = 300;
+double ControlMin = -300;
 
 // PID Controller function
 float pidController(float setpoint, float measuredValue) {
@@ -53,6 +57,13 @@ float pidController(float setpoint, float measuredValue) {
     
     // Update state variables
     previousError = error;
+
+    // Apply drive limits
+    if (controlSignal > ControlMax) {
+        controlSignal = ControlMax;
+    } else if (controlSignal < ControlMin) {
+        controlSignal = ControlMin;
+    }
     
     return controlSignal;
 }
