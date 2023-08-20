@@ -74,12 +74,12 @@ void drv8874_drive(int16_t drv8874_duty){
 
     if (drv8874_duty > 0)
     {
-        pwm_values.channel_0 = drv8874_duty;
-        pwm_values.channel_1 = 0;
+        pwm_values.channel_0 = 0;
+        pwm_values.channel_1 = drv8874_duty;
     } else
     {
-        pwm_values.channel_0 = 0;
-        pwm_values.channel_1 = -drv8874_duty;
+        pwm_values.channel_0 = -drv8874_duty;
+        pwm_values.channel_1 = 0;
     }
 
     // uint16_t temp_duty[1] = {0};
