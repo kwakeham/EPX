@@ -16,6 +16,9 @@
 #include "app_timer.h"
 #include "nrf_delay.h"
 #include "drv8874.h"
+#include "PID_controller.h"
+
+uint32_t mpos_debug_counter = 0;
 
 // #define count_offset 2350 //3.3v
 #define default_sin_cos_offset 2078 //Half?
@@ -103,7 +106,7 @@ void mpos_init(void)
     //motor position timer, this is 10hz but really this will be 100 - 200 hz... or more likely 128 or 256, because 2^ maths
     err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
     APP_ERROR_CHECK(err_code);
-    err_code = app_timer_start(m_repeat_action, 3277, NULL); 
+    err_code = app_timer_start(m_repeat_action, 256, NULL); 
     APP_ERROR_CHECK(err_code);
 
     nrf_gpio_cfg_output(S_HALL_EN);
@@ -201,14 +204,22 @@ float angle(int16_t hall_0, int16_t hall_1)
 void mpos_display_value(void)
 {
     // angle(m_buffer_pool[0], m_buffer_pool(1));
-    double temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
+    float temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
     sin_cos[0] = m_buffer_pool[0];
     sin_cos[1] = m_buffer_pool[1];
-    temp_angle += 1;
+    // temp_angle += 1;
     // double temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
     mpos_min_max();
-    NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],rotation_count,NRF_LOG_FLOAT(temp_angle));
+    temp_angle += rotation_count*360;
+    float drive = pidController(180,(float)temp_angle);
+    int16_t drive_int = (int16_t)drive;
+    mpos_debug_counter++;
+    if (mpos_debug_counter %20 == 0)
+    {
+        NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],drive_int,NRF_LOG_FLOAT(temp_angle));
+    }
     // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
-    NRF_LOG_FLUSH();
-    drv8874_drive((int16_t)temp_angle-180);
+    // NRF_LOG_FLUSH();
+    // float drive = pidController(180,(float)temp_angle);
+    drv8874_drive((int16_t)drive);
 }
