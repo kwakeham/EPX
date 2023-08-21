@@ -13,6 +13,8 @@
 #include "ble_cus.h"
 #include <string.h>
 #include "titan_mem.h"
+#include "mpos.h"
+#include "PID_controller.h"
 // #include "hf_time.h"
 // #include "linearinterpolator.h"
 
@@ -121,17 +123,28 @@ void data_handler_command_processor(void)
         NRF_LOG_INFO("little m");
         break;
 
+    case 0x50: //R Raw Output
+        NRF_LOG_INFO("big P");
+        update_Kp(data_handler_command_float_return(1));
+        break;
+    case 0x70: //r Raw Output
+        NRF_LOG_INFO("little P");
+        update_Kp(data_handler_command_float_return(1));
+        break;
+
     case 0x52: //R Raw Output
         NRF_LOG_INFO("big R");
         break;
     case 0x72: //r Raw Output
-        NRF_LOG_INFO("little ");
+        NRF_LOG_INFO("little r");
         break;
 
     case 0x54: //T Tared ouput
         NRF_LOG_INFO("big T");
+        mpos_update_angle(data_handler_command_float_return(1));
     case 0x74: //t Tared ouput
         NRF_LOG_INFO("little t");
+        mpos_update_angle(data_handler_command_float_return(1));
         break;
     default:
         break;
