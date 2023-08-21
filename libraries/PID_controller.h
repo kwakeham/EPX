@@ -12,6 +12,13 @@
 #ifndef PID_CONTROLLER__
 #define PID_CONTROLLER__
 
+/**
+ * @brief update the kp from default
+ * 
+ * @param temp_Kp 
+ */
+void update_Kp(float temp_Kp);
+
 float pidController(float setpoint, float measuredValue);
 
 #endif

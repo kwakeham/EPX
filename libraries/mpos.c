@@ -23,6 +23,7 @@ uint32_t mpos_debug_counter = 0;
 // #define count_offset 2350 //3.3v
 #define default_sin_cos_offset 2078 //Half?
 #define default_range 50
+static bool update_position = false;
 static nrf_saadc_value_t m_buffer_pool[3];
 
 static nrf_saadc_value_t sin_cos[2]; //stores the current value of sin in sin_cos[0] and cos in sin_cos[1]
@@ -41,12 +42,14 @@ static double angle_old;
 
 APP_TIMER_DEF(m_repeat_action);
 
+float ble_angle = 180.0f;
+
 void saadc_callback(nrfx_saadc_evt_t const * p_event)
 {
 
     if (p_event->type == NRFX_SAADC_EVT_DONE) //Capture offset calibration complete event
     {
- 
+        update_position = true;
     }
     else if (p_event->type == NRFX_SAADC_EVT_CALIBRATEDONE)
     {
@@ -201,25 +204,36 @@ float angle(int16_t hall_0, int16_t hall_1)
     return(rotation_angle);
 }
 
+void mpos_update_angle(float target_angle)
+{
+    ble_angle = target_angle;
+}
+
 void mpos_display_value(void)
 {
-    // angle(m_buffer_pool[0], m_buffer_pool(1));
-    float temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
-    sin_cos[0] = m_buffer_pool[0];
-    sin_cos[1] = m_buffer_pool[1];
-    // temp_angle += 1;
-    // double temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
-    mpos_min_max();
-    temp_angle += rotation_count*360;
-    float drive = pidController(180,(float)temp_angle);
-    int16_t drive_int = (int16_t)drive;
-    mpos_debug_counter++;
-    if (mpos_debug_counter %20 == 0)
+    if (update_position)
     {
-        NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],drive_int,NRF_LOG_FLOAT(temp_angle));
+        update_position = false;
+        // angle(m_buffer_pool[0], m_buffer_pool(1));
+        float temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
+        sin_cos[0] = m_buffer_pool[0];
+        sin_cos[1] = m_buffer_pool[1];
+        // temp_angle += 1;
+        // double temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
+        mpos_min_max();
+        temp_angle += rotation_count*360;
+        float drive = pidController(ble_angle,(float)temp_angle);
+        // int16_t drive_int = (int16_t)drive;
+        mpos_debug_counter++;
+        // if (mpos_debug_counter %20 == 0)
+        // {
+        //     NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],drive_int,NRF_LOG_FLOAT(temp_angle));
+        // }
+        NRF_LOG_RAW_INFO( NRF_LOG_FLOAT_MARKER "\n", NRF_LOG_FLOAT(temp_angle));
+        // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
+        // NRF_LOG_FLUSH();
+        // float drive = pidController(180,(float)temp_angle);
+        drv8874_drive((int16_t)drive);
     }
-    // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
-    // NRF_LOG_FLUSH();
-    // float drive = pidController(180,(float)temp_angle);
-    drv8874_drive((int16_t)drive);
+
 }

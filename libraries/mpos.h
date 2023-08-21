@@ -61,6 +61,13 @@ void mpos_min_max(void);
 
 float angle(int16_t hall_0, int16_t hall_1);
 
+/**
+ * @brief temporary to update the target angle from BLE
+ * 
+ * @param target_angle 
+ */
+void mpos_update_angle(float target_angle);
+
 void mpos_display_value(void);
 
 #ifdef __cplusplus
