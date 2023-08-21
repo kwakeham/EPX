@@ -123,13 +123,31 @@ void data_handler_command_processor(void)
         NRF_LOG_INFO("little m");
         break;
 
-    case 0x50: //R Raw Output
+    case 0x50: //P Set Kp
         NRF_LOG_INFO("big P");
         update_Kp(data_handler_command_float_return(1));
         break;
-    case 0x70: //r Raw Output
+    case 0x70: //p Set Kp
         NRF_LOG_INFO("little P");
         update_Kp(data_handler_command_float_return(1));
+        break;
+
+    case 0x49: //I set Ki
+        NRF_LOG_INFO("big I");
+        update_Ki(data_handler_command_float_return(1));
+        break;
+    case 0x69: //i set Ki
+        NRF_LOG_INFO("little i");
+        update_Ki(data_handler_command_float_return(1));
+        break;
+
+    case 0x44: //D Set Kd
+        NRF_LOG_INFO("big D");
+        update_Kd(data_handler_command_float_return(1));
+        break;
+    case 0x64: //d Set Kd
+        NRF_LOG_INFO("little d");
+        update_Kd(data_handler_command_float_return(1));
         break;
 
     case 0x52: //R Raw Output
