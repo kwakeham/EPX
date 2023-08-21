@@ -109,7 +109,7 @@ void mpos_init(void)
     //motor position timer, this is 10hz but really this will be 100 - 200 hz... or more likely 128 or 256, because 2^ maths
     err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
     APP_ERROR_CHECK(err_code);
-    err_code = app_timer_start(m_repeat_action, 256, NULL); 
+    err_code = app_timer_start(m_repeat_action, 128, NULL); 
     APP_ERROR_CHECK(err_code);
 
     nrf_gpio_cfg_output(S_HALL_EN);
