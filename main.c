@@ -144,6 +144,10 @@ int main(void)
 
     ble_cus_init();
 
+    tm_fds_init();
+    
+    tm_fds_config_init();
+
     mpos_init();
     drv8874_init();
 
