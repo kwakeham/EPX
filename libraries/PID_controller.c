@@ -22,6 +22,11 @@ float Kp = 10.0;   // Proportional gain
 float Ki = 0;  // Integral gain
 float Kd = 0;  // Derivative gain
 
+//At 256hz (128 repeat) kp = 18
+//At 128hz kp = 9
+//AT 512hz kp = 35-40
+
+
 // PID Controller state variables
 float previousError = 0.0;
 float integral = 0.0;
@@ -37,6 +42,16 @@ float ControlMin = -400;
 void update_Kp(float temp_Kp)
 {
     Kp = temp_Kp;
+}
+
+void update_Ki(float temp_Ki)
+{
+    Ki = temp_Ki;
+}
+
+void update_Kd(float temp_Kd)
+{
+    Kd = temp_Kd;
 }
 
 // PID Controller function

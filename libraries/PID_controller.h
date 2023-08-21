@@ -19,6 +19,20 @@
  */
 void update_Kp(float temp_Kp);
 
+/**
+ * @brief update the ki from default
+ * 
+ * @param temp_Ki 
+ */
+void update_Ki(float temp_Ki);
+
+/**
+ * @brief update the ki from default
+ * 
+ * @param temp_Kd
+ */
+void update_Kd(float temp_Kd);
+
 float pidController(float setpoint, float measuredValue);
 
 #endif
