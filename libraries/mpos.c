@@ -61,12 +61,13 @@ void saadc_callback(nrfx_saadc_evt_t const * p_event)
 
 void mpos_timer_handler(void *p_context)
 {
-    // mpos_convert(); //do a converstion
+    
 
-    ret_code_t err_code;
+    // ret_code_t err_code;
     nrf_gpio_pin_clear(S_HALL_EN);
-    err_code = app_timer_start(m_saadc_acquire, 32, NULL); 
-    APP_ERROR_CHECK(err_code);
+    mpos_convert(); //do a converstion
+    // err_code = app_timer_start(m_saadc_acquire, 4, NULL); 
+    // APP_ERROR_CHECK(err_code);
 }
 
 void mpos_acquire(void *p_context)
