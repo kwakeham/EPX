@@ -41,6 +41,7 @@ static int8_t rotation_count = 0;
 static double angle_old;
 
 APP_TIMER_DEF(m_repeat_action);
+APP_TIMER_DEF(m_saadc_acquire);
 
 float ble_angle = 180.0f;
 
@@ -50,6 +51,7 @@ void saadc_callback(nrfx_saadc_evt_t const * p_event)
     if (p_event->type == NRFX_SAADC_EVT_DONE) //Capture offset calibration complete event
     {
         update_position = true;
+        nrf_gpio_pin_set(S_HALL_EN);
     }
     else if (p_event->type == NRFX_SAADC_EVT_CALIBRATEDONE)
     {
@@ -58,6 +60,16 @@ void saadc_callback(nrfx_saadc_evt_t const * p_event)
 }
 
 void mpos_timer_handler(void *p_context)
+{
+    // mpos_convert(); //do a converstion
+
+    ret_code_t err_code;
+    nrf_gpio_pin_clear(S_HALL_EN);
+    err_code = app_timer_start(m_saadc_acquire, 32, NULL); 
+    APP_ERROR_CHECK(err_code);
+}
+
+void mpos_acquire(void *p_context)
 {
     mpos_convert(); //do a converstion
 }
@@ -70,7 +82,7 @@ void mpos_init(void)
     nrfx_saadc_config_t saadc_config;
     saadc_config.resolution = NRF_SAADC_RESOLUTION_12BIT; //need to manually set the resolution or else it'll default to 8 bit
     // saadc_config.oversample = NRF_SAADC_OVERSAMPLE_DISABLED; // default is 4 sample over sampling so need to override that.
-    saadc_config.oversample = NRF_SAADC_OVERSAMPLE_4X; // default is 4 sample over sampling so need to override that.
+    saadc_config.oversample = NRF_SAADC_OVERSAMPLE_16X; // default is 4 sample over sampling so need to override that.
     saadc_config.interrupt_priority = 5; //Hmmm?
     saadc_config.low_power_mode = false;
 
@@ -109,6 +121,10 @@ void mpos_init(void)
     //motor position timer, this is 10hz but really this will be 100 - 200 hz... or more likely 128 or 256, because 2^ maths
     err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
     APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_create(&m_saadc_acquire, APP_TIMER_MODE_SINGLE_SHOT, mpos_acquire);
+    APP_ERROR_CHECK(err_code);
+
     err_code = app_timer_start(m_repeat_action, 128, NULL); 
     APP_ERROR_CHECK(err_code);
 
