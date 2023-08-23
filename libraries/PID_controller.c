@@ -19,8 +19,8 @@
 
 // PID Controller parameters
 float Kp = 10.0;   // Proportional gain
-float Ki = 0;  // Integral gain
-float Kd = 0;  // Derivative gain
+float Ki = 1.5;  // Integral gain
+float Kd = 3;  // Derivative gain
 
 //At 256hz (128 repeat) kp = 18
 //At 128hz kp = 9
@@ -32,12 +32,16 @@ float previousError = 0.0;
 float integral = 0.0;
 
 // Integral limits
-float integralMax = 20.0;
-float integralMin = -20.0;
+float integralMax = 120.0;
+float integralMin = -120.0;
 
 // Control limits
 float ControlMax = 400;
 float ControlMin = -400;
+
+// Dead band?
+float DeadMax = 50;
+float DeadMin = -50;
 
 void update_Kp(float temp_Kp)
 {
@@ -83,6 +87,11 @@ float pidController(float setpoint, float measuredValue) {
         controlSignal = ControlMax;
     } else if (controlSignal < ControlMin) {
         controlSignal = ControlMin;
+    }
+
+    // Apply drive limits
+    if (controlSignal < DeadMax && controlSignal > DeadMin) {
+        controlSignal = 0;
     }
     
     return controlSignal;
