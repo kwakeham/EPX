@@ -12,6 +12,8 @@
 #ifndef PID_CONTROLLER__
 #define PID_CONTROLLER__
 
+#include "titan_mem.h"
+
 /**
  * @brief update the kp from default
  * 
@@ -32,6 +34,8 @@ void update_Ki(float temp_Ki);
  * @param temp_Kd
  */
 void update_Kd(float temp_Kd);
+
+void link_memory(epx_configuration_t *temp_link_epx_values);
 
 float pidController(float setpoint, float measuredValue);
 

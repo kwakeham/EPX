@@ -32,8 +32,8 @@ float previousError = 0.0;
 float integral = 0.0;
 
 // Integral limits
-float integralMax = 120.0;
-float integralMin = -120.0;
+float integralMax = 300.0;
+float integralMin = -300.0;
 
 // Control limits
 float ControlMax = 400;
@@ -42,6 +42,8 @@ float ControlMin = -400;
 // Dead band?
 float DeadMax = 50;
 float DeadMin = -50;
+
+static epx_configuration_t *link_epx_values = NULL;
 
 void update_Kp(float temp_Kp)
 {
@@ -58,9 +60,18 @@ void update_Kd(float temp_Kd)
     Kd = temp_Kd;
 }
 
+void link_memory(epx_configuration_t *temp_link_epx_values)
+{
+    link_epx_values = temp_link_epx_values;
+}
+
+
 // PID Controller function
 float pidController(float setpoint, float measuredValue) {
     // Calculate the error
+    Kp =link_epx_values->Kp;
+    Ki =link_epx_values->Ki;
+    Kd =link_epx_values->Kd;
     float error = setpoint - measuredValue;
     
     // Calculate the integral term

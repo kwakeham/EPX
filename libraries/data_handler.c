@@ -144,39 +144,39 @@ void data_handler_command_processor(void)
     case 0x50: //P Set Kp
         NRF_LOG_INFO("big P");
         epx_values.Kp =  data_handler_command_float_return(1);
-        update_Kp(epx_values.Kp);
+        // update_Kp(epx_values.Kp);
         data_handler_show_gains();
         break;
     case 0x70: //p Set Kp
         NRF_LOG_INFO("little P");
         epx_values.Kp =  data_handler_command_float_return(1);
-        update_Kp(epx_values.Kp);
+        // update_Kp(epx_values.Kp);
         data_handler_show_gains();
         break;
 
     case 0x49: //I set Ki
         NRF_LOG_INFO("big I");
         epx_values.Ki =  data_handler_command_float_return(1);
-        update_Ki(epx_values.Ki);
+        // update_Ki(epx_values.Ki);
         data_handler_show_gains();
         break;
     case 0x69: //i set Ki
         NRF_LOG_INFO("little i");
         epx_values.Ki =  data_handler_command_float_return(1);
-        update_Ki(epx_values.Ki);
+        // update_Ki(epx_values.Ki);
         data_handler_show_gains();
         break;
 
     case 0x44: //D Set Kd
         NRF_LOG_INFO("big D");
         epx_values.Kd =  data_handler_command_float_return(1);
-        update_Kd(epx_values.Kd);
+        // update_Kd(epx_values.Kd);
         data_handler_show_gains();
         break;
     case 0x64: //d Set Kd
         NRF_LOG_INFO("little d");
         epx_values.Kd =  data_handler_command_float_return(1);
-        update_Kd(epx_values.Kd);
+        // update_Kd(epx_values.Kd);
         data_handler_show_gains();
         break;
 
@@ -314,6 +314,7 @@ void data_handler_get_flash_values(void)
     update_Kp(epx_values.Kp);
     update_Ki(epx_values.Ki);
     update_Kd(epx_values.Kd);
+    link_memory(&epx_values);
 }
 
 bool data_handler_averaging(void)
