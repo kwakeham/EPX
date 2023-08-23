@@ -5,7 +5,8 @@
  * 
  *
  */
-
+#include <stdio.h>
+#include <ctype.h>
 #include "data_handler.h"
 #include "boards.h"
 #include "math.h"
@@ -15,6 +16,7 @@
 #include "titan_mem.h"
 #include "mpos.h"
 #include "PID_controller.h"
+
 // #include "hf_time.h"
 // #include "linearinterpolator.h"
 
@@ -64,15 +66,10 @@ void data_handler_command(const char* p_chars, uint32_t length)
 
 void data_handler_command_processor(void)
 {
+    command_message[0] = tolower(command_message[0]);
     // NRF_LOG_INFO("command processor: %s", command_message);
     switch (command_message[0])
     {
-    case 0x5A: //Z Zero
-        NRF_LOG_INFO("big Z");
-        average_data = true;
-        zero_request = true;
-        max_average_count = 255;
-        break;
     case 0x7A: //z Zero
         NRF_LOG_INFO("little z");
         average_data = true;
@@ -80,73 +77,40 @@ void data_handler_command_processor(void)
         max_average_count = 255;
         break;
 
-    case 0x41: //A
-        average_data = true;
-        max_average_count = data_handler_command_number_return(1);
-        NRF_LOG_INFO("Big A %d",max_average_count);
-        break;
-    case 0x61: //ac 
+    case 0x61: //average 
         average_data = true;
         max_average_count = data_handler_command_number_return(1);
         NRF_LOG_INFO("little a %d",max_average_count);
         break;
 
-    case 0x43: //C Calibration coefficient
-        NRF_LOG_INFO("big C");
-        data_handler_command_gear_value();
-        break;
     case 0x63: //c Calibration coefficient
         NRF_LOG_INFO("little c");
         data_handler_command_gear_value();
         break;
 
-    case 0x42: //B Calibration coefficient
-        NRF_LOG_INFO("big B");
-        break;
     case 0x62: //b Calibration coefficient
         NRF_LOG_INFO("little b");
         break;
     
-    case 0x46: //F Force <Save>
-        NRF_LOG_INFO("big F");
-        data_handler_force_save(command_message[1]);
-        break;
     case 0x66: //f Calibration coefficient
         NRF_LOG_INFO("little f");
         data_handler_force_save(command_message[1]);
         break;
 
-    case 0x47: //G Gear offset
-        NRF_LOG_INFO("big G");
-        data_handler_command_gear_value();
-        break;
     case 0x67: //g Gear offset
         NRF_LOG_INFO("little g");
         data_handler_command_gear_value();
         break;
     
-    case 0x4B: //K List Gains
-        NRF_LOG_INFO("big K");
-        data_handler_show_gains();
-        break;
     case 0x6B: //k List Gains
         NRF_LOG_INFO("little k");
         data_handler_show_gains();
         break;
 
-    case 0x4D: //M Force Output
-        NRF_LOG_INFO("big M");
-        break;
     case 0x6D: //m Force Output
         NRF_LOG_INFO("little m");
         break;
 
-    case 0x50: //P Set Kp
-        NRF_LOG_INFO("big P");
-        epx_values.Kp =  data_handler_command_float_return(1);
-        // update_Kp(epx_values.Kp);
-        data_handler_show_gains();
-        break;
     case 0x70: //p Set Kp
         NRF_LOG_INFO("little P");
         epx_values.Kp =  data_handler_command_float_return(1);
@@ -154,12 +118,6 @@ void data_handler_command_processor(void)
         data_handler_show_gains();
         break;
 
-    case 0x49: //I set Ki
-        NRF_LOG_INFO("big I");
-        epx_values.Ki =  data_handler_command_float_return(1);
-        // update_Ki(epx_values.Ki);
-        data_handler_show_gains();
-        break;
     case 0x69: //i set Ki
         NRF_LOG_INFO("little i");
         epx_values.Ki =  data_handler_command_float_return(1);
@@ -167,12 +125,6 @@ void data_handler_command_processor(void)
         data_handler_show_gains();
         break;
 
-    case 0x44: //D Set Kd
-        NRF_LOG_INFO("big D");
-        epx_values.Kd =  data_handler_command_float_return(1);
-        // update_Kd(epx_values.Kd);
-        data_handler_show_gains();
-        break;
     case 0x64: //d Set Kd
         NRF_LOG_INFO("little d");
         epx_values.Kd =  data_handler_command_float_return(1);
@@ -180,16 +132,10 @@ void data_handler_command_processor(void)
         data_handler_show_gains();
         break;
 
-    case 0x52: //R Raw Output
-        NRF_LOG_INFO("big R");
-        break;
     case 0x72: //r Raw Output
         NRF_LOG_INFO("little r");
         break;
 
-    case 0x54: //T Target Angle in degrees
-        NRF_LOG_INFO("big T");
-        mpos_update_angle(data_handler_command_float_return(1));
     case 0x74: //t Target Angle in degrees
         NRF_LOG_INFO("little t");
         mpos_update_angle(data_handler_command_float_return(1));
@@ -230,6 +176,7 @@ void data_handler_force_save(char command)
 void data_handler_command_gear_value(void)
 {
     update_flash = true;
+    
     switch (command_message[1])
     {
     case 0x31: //1
