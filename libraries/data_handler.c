@@ -106,6 +106,15 @@ void data_handler_command_processor(void)
     case 0x62: //b Calibration coefficient
         NRF_LOG_INFO("little b");
         break;
+    
+    case 0x46: //F Force <Save>
+        NRF_LOG_INFO("big F");
+        data_handler_force_save(command_message[1]);
+        break;
+    case 0x66: //f Calibration coefficient
+        NRF_LOG_INFO("little f");
+        data_handler_force_save(command_message[1]);
+        break;
 
     case 0x47: //G Gear offset
         NRF_LOG_INFO("big G");
@@ -188,6 +197,15 @@ int32_t data_handler_command_number_return(uint8_t offset)
     return(x);
 }
 
+void data_handler_force_save(char command)
+{
+    if (command == 0x53 || command == 0x73)
+    {
+        update_flash = true;
+    }
+    NRF_LOG_INFO("Force save");
+}
+
 void data_handler_command_gear_value(void)
 {
     update_flash = true;
@@ -236,7 +254,7 @@ void data_handler_command_gear_value(void)
         update_flash = false; //if it wasn't the other cases, don't update the flash memory
         break;
     }
-    sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld",epx_values.gear1_pos,epx_values.gear2_pos,epx_values.gear3_pos,epx_values.gear4_pos);
+    sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld",epx_values.gear1_pos,epx_values.gear2_pos,epx_values.gear3_pos,epx_values.gear4_pos, epx_values.gear5_pos);
     // sprintf(buff2, "y: %.6f, %.6f, %.6f, %.6f",epx_values.C1y_cal,epx_values.C2y_cal,epx_values.C3y_cal,epx_values.C4y_cal);
     // sprintf(buff2, "y: %.6f, %.6f, %.6f, %.6f",epx_values.C1y_cal,epx_values.C2y_cal,epx_values.C3y_cal,epx_values.C4y_cal);
     NRF_LOG_INFO(" %s " , buff1);

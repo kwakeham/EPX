@@ -148,6 +148,8 @@ int main(void)
     
     tm_fds_config_init();
 
+    data_handler_get_flash_values();
+
     mpos_init();
     drv8874_init();
 

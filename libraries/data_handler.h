@@ -21,6 +21,8 @@ float data_handler_command_float_return(uint8_t offset);
 
 int32_t data_handler_command_number_return(uint8_t offset);
 
+void data_handler_force_save(char command);
+
 void data_handler_command_gear_value(void);
 
 void data_handler_sch_execute(void);
