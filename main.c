@@ -138,29 +138,20 @@ int main(void)
 
     log_init();
 
-    // lis2dtw_start();
+    // lis2dtw_start(); //this isn't installed yet
 
     app_timer_init();
 
     ble_cus_init();
 
+    //Flash Memory
     tm_fds_init();
-    
     tm_fds_config_init();
-
     data_handler_get_flash_values();
 
+    //Start Saadc and motor drivers
     mpos_init();
     drv8874_init();
-
-    // nrf_delay_ms(1);
-    nrf_delay_us(1000);
-
-    mpos_convert();
-
-    nrf_delay_ms(200);
-
-    mpos_display_value();
 
     // Enter main loop.
     for (;;)
