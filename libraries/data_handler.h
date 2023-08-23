@@ -25,6 +25,8 @@ void data_handler_force_save(char command);
 
 void data_handler_command_gear_value(void);
 
+void data_handler_show_gains(void);
+
 void data_handler_sch_execute(void);
 
 void data_handler_get_flash_values(void);

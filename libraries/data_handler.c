@@ -124,6 +124,15 @@ void data_handler_command_processor(void)
         NRF_LOG_INFO("little g");
         data_handler_command_gear_value();
         break;
+    
+    case 0x4B: //K List Gains
+        NRF_LOG_INFO("big K");
+        data_handler_show_gains();
+        break;
+    case 0x6B: //k List Gains
+        NRF_LOG_INFO("little k");
+        data_handler_show_gains();
+        break;
 
     case 0x4D: //M Force Output
         NRF_LOG_INFO("big M");
@@ -134,29 +143,41 @@ void data_handler_command_processor(void)
 
     case 0x50: //P Set Kp
         NRF_LOG_INFO("big P");
-        update_Kp(data_handler_command_float_return(1));
+        epx_values.Kp =  data_handler_command_float_return(1);
+        update_Kp(epx_values.Kp);
+        data_handler_show_gains();
         break;
     case 0x70: //p Set Kp
         NRF_LOG_INFO("little P");
-        update_Kp(data_handler_command_float_return(1));
+        epx_values.Kp =  data_handler_command_float_return(1);
+        update_Kp(epx_values.Kp);
+        data_handler_show_gains();
         break;
 
     case 0x49: //I set Ki
         NRF_LOG_INFO("big I");
-        update_Ki(data_handler_command_float_return(1));
+        epx_values.Ki =  data_handler_command_float_return(1);
+        update_Ki(epx_values.Ki);
+        data_handler_show_gains();
         break;
     case 0x69: //i set Ki
         NRF_LOG_INFO("little i");
-        update_Ki(data_handler_command_float_return(1));
+        epx_values.Ki =  data_handler_command_float_return(1);
+        update_Ki(epx_values.Ki);
+        data_handler_show_gains();
         break;
 
     case 0x44: //D Set Kd
         NRF_LOG_INFO("big D");
-        update_Kd(data_handler_command_float_return(1));
+        epx_values.Kd =  data_handler_command_float_return(1);
+        update_Kd(epx_values.Kd);
+        data_handler_show_gains();
         break;
     case 0x64: //d Set Kd
         NRF_LOG_INFO("little d");
-        update_Kd(data_handler_command_float_return(1));
+        epx_values.Kd =  data_handler_command_float_return(1);
+        update_Kd(epx_values.Kd);
+        data_handler_show_gains();
         break;
 
     case 0x52: //R Raw Output
@@ -166,10 +187,10 @@ void data_handler_command_processor(void)
         NRF_LOG_INFO("little r");
         break;
 
-    case 0x54: //T Tared ouput
+    case 0x54: //T Target Angle in degrees
         NRF_LOG_INFO("big T");
         mpos_update_angle(data_handler_command_float_return(1));
-    case 0x74: //t Tared ouput
+    case 0x74: //t Target Angle in degrees
         NRF_LOG_INFO("little t");
         mpos_update_angle(data_handler_command_float_return(1));
         break;
@@ -262,6 +283,13 @@ void data_handler_command_gear_value(void)
     // nus_data_send((uint8_t *)buff2, strlen(buff2));
 }
 
+void data_handler_show_gains(void)
+{
+    sprintf(buff1, "Gains: Kp: %.3f, Ki: %.3f, Kd: %.3f",epx_values.Kp, epx_values.Ki, epx_values.Kd);
+    NRF_LOG_INFO(" %s " , buff1);
+    nus_data_send((uint8_t *)buff1, strlen(buff1));
+}
+
 void data_handler_sch_execute(void)
 {
 
@@ -283,7 +311,9 @@ void data_handler_sch_execute(void)
 void data_handler_get_flash_values(void)
 {
     epx_values = tm_fds_epx_config();
-
+    update_Kp(epx_values.Kp);
+    update_Ki(epx_values.Ki);
+    update_Kd(epx_values.Kd);
 }
 
 bool data_handler_averaging(void)
