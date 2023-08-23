@@ -6,3 +6,4 @@ pca10040/s132/armgcc/settings_dfu.hex
 *.zip
 *.log
 *.local
+*.code-workspace
