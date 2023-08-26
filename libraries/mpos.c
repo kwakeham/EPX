@@ -235,21 +235,22 @@ void mpos_display_value(void)
         float temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
         sin_cos[0] = m_buffer_pool[0];
         sin_cos[1] = m_buffer_pool[1];
-        // temp_angle += 1;
-        // double temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
-        mpos_min_max();
+
+        mpos_min_max(); // store min max for average offset
+
         temp_angle += rotation_count*360;
+
         float drive = pidController(ble_angle,(float)temp_angle);
-        // int16_t drive_int = (int16_t)drive;
+
         mpos_debug_counter++;
         // if (mpos_debug_counter %20 == 0)
         // {
         //     NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],drive_int,NRF_LOG_FLOAT(temp_angle));
         // }
-        NRF_LOG_RAW_INFO( NRF_LOG_FLOAT_MARKER "\n", NRF_LOG_FLOAT(temp_angle));
         // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
-        // NRF_LOG_FLUSH();
-        // float drive = pidController(180,(float)temp_angle);
+
+        NRF_LOG_RAW_INFO( NRF_LOG_FLOAT_MARKER "\n", NRF_LOG_FLOAT(temp_angle));
+        
         drv8874_drive((int16_t)drive);
     }
 
