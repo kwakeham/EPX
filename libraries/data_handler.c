@@ -191,12 +191,12 @@ void data_handler_command_gear_value(void)
         update_flash = false; //if it wasn't the other cases, don't update the flash memory
         break;
     }
-    sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld",epx_values.gear1_pos,epx_values.gear2_pos,epx_values.gear3_pos,epx_values.gear4_pos, epx_values.gear5_pos);
-    // sprintf(buff2, "y: %.6f, %.6f, %.6f, %.6f",epx_values.C1y_cal,epx_values.C2y_cal,epx_values.C3y_cal,epx_values.C4y_cal);
-    // sprintf(buff2, "y: %.6f, %.6f, %.6f, %.6f",epx_values.C1y_cal,epx_values.C2y_cal,epx_values.C3y_cal,epx_values.C4y_cal);
-    NRF_LOG_INFO(" %s " , buff1);
+    sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear1_pos,epx_values.gear2_pos,epx_values.gear3_pos,epx_values.gear4_pos, epx_values.gear5_pos, epx_values.gear6_pos);
+    sprintf(buff2, "Gear 7: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear6_pos,epx_values.gear7_pos,epx_values.gear8_pos,epx_values.gear9_pos, epx_values.gear10_pos,epx_values.gear11_pos, epx_values.gear12_pos);
+
+    NRF_LOG_INFO(" %s %d" , buff1);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
-    // nus_data_send((uint8_t *)buff2, strlen(buff2));
+    nus_data_send((uint8_t *)buff2, strlen(buff2));
 }
 
 void data_handler_show_gains(void)
