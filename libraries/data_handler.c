@@ -46,20 +46,6 @@ void data_handler_command_processor(void)
     // NRF_LOG_INFO("command processor: %s", command_message);
     switch (command_message[0])
     {
-    case 0x7A: //z Zero
-        NRF_LOG_INFO("little z");
-        break;
-
-    case 0x61: //a for averagee 
-        break;
-
-    case 0x63: //c 
-        NRF_LOG_INFO("little c");
-        break;
-
-    case 0x62: //b 
-        NRF_LOG_INFO("little b");
-        break;
     
     case 0x66: //f force save coefficients
         NRF_LOG_INFO("little f");
@@ -74,10 +60,6 @@ void data_handler_command_processor(void)
     case 0x6B: //k List Gains
         NRF_LOG_INFO("little k");
         data_handler_show_gains();
-        break;
-
-    case 0x6D: //m 
-        NRF_LOG_INFO("little m");
         break;
 
     case 0x70: //p Set Kp
@@ -101,14 +83,11 @@ void data_handler_command_processor(void)
         data_handler_show_gains();
         break;
 
-    case 0x72: //r Raw Output
-        NRF_LOG_INFO("little r");
-        break;
-
     case 0x74: //t Target Angle in degrees
         NRF_LOG_INFO("little t");
         mpos_update_angle(data_handler_command_float_return(1));
         break;
+        
     default:
         break;
     }
