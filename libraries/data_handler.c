@@ -31,6 +31,8 @@ char buff2[50];
 
 bool update_flash = false; //Update the falsh memory from the main loop
 
+bool shift_mode = true; //if true then we are in a gear mode, if false we're in an angle mode 
+
 uint32_t dh_debug_counter = 0;
 
 void data_handler_command(const char* p_chars, uint32_t length)
@@ -52,14 +54,20 @@ void data_handler_command_processor(void)
         data_handler_force_save(command_message[1]);
         break;
 
-    case 0x67: //g Gear offset
+    case 0x67: //g Set the position for each Gear
         NRF_LOG_INFO("little g");
         data_handler_command_gear_value();
         break;
+
     
     case 0x6B: //k List Gains
         NRF_LOG_INFO("little k");
         data_handler_show_gains();
+        break;
+
+    case 0x6D: //g Set the position for each Gear
+        NRF_LOG_INFO("little m");
+        data_handler_shift_mode_handler();
         break;
 
     case 0x70: //p Set Kp
@@ -85,7 +93,10 @@ void data_handler_command_processor(void)
 
     case 0x74: //t Target Angle in degrees
         NRF_LOG_INFO("little t");
-        mpos_update_angle(data_handler_command_float_return(1));
+        if (!shift_mode)
+        {
+            mpos_update_angle(data_handler_command_float_return(1));
+        }
         break;
         
     default:
@@ -119,6 +130,29 @@ void data_handler_force_save(char command)
         update_flash = true;
     }
     NRF_LOG_INFO("Force save");
+}
+
+void data_handler_shift_mode_handler(void)
+{
+    command_message[1] = tolower(command_message[1]);
+    switch (command_message[1])
+    {
+    case 0x61: //a
+        shift_mode = false;
+        sprintf(buff1, "Angle Mode");
+        break;
+
+    case 0x67: //g
+        shift_mode = true;
+        sprintf(buff1, "Gear Mode");
+        break; 
+
+    default:
+        break;
+    }
+    NRF_LOG_INFO(" %s %d" , buff1);
+    nus_data_send((uint8_t *)buff1, strlen(buff1));
+    
 }
 
 void data_handler_command_gear_value(void)
@@ -171,7 +205,7 @@ void data_handler_command_gear_value(void)
         break;
     }
     sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear1_pos,epx_values.gear2_pos,epx_values.gear3_pos,epx_values.gear4_pos, epx_values.gear5_pos, epx_values.gear6_pos);
-    sprintf(buff2, "Gear 7: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear6_pos,epx_values.gear7_pos,epx_values.gear8_pos,epx_values.gear9_pos, epx_values.gear10_pos,epx_values.gear11_pos, epx_values.gear12_pos);
+    sprintf(buff2, "Gear 7: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear7_pos,epx_values.gear8_pos,epx_values.gear9_pos, epx_values.gear10_pos,epx_values.gear11_pos, epx_values.gear12_pos);
 
     NRF_LOG_INFO(" %s %d" , buff1);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
