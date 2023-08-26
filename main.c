@@ -147,7 +147,7 @@ int main(void)
     //Flash Memory
     tm_fds_init();
     tm_fds_config_init();
-    data_handler_get_flash_values();
+    data_handler_get_flash_values(); //load the flash values to the datahandler
 
     //Start Saadc and motor drivers
     mpos_init();
