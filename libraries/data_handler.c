@@ -27,21 +27,9 @@
 #define CHAR_LENGTH 10
 #define DATAOUTENABLE
 
-static char command_message[10] = "c55525";
-char write_message[240] = "5n51000001,5.1,2122\n";
-
-// static char nus_message[128];
-
-//dataoutput variables
-// static float torque_L[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-// static float torque_R[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-// static uint32_t sample_time[6] = {0, 0, 0, 0, 0, 0};
-// static float gyro_angle[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-// static float gyro_z[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+static char command_message[10] = {}; 
 
 bool average_data = false;
-bool zero_request = false;
-bool new_adc_data = false;
 int32_t average_count = 0;
 int32_t max_average_count = 0;
 
@@ -49,11 +37,11 @@ bool data_process_command = false;
 
 epx_configuration_t epx_values;
 
-
-//temp
+//nus buffers
 char buff1[50];
 char buff2[50];
-bool update_flash = false; //did something change, should we update the falsh memory
+
+bool update_flash = false; //Update the falsh memory from the main loop
 
 uint32_t dh_debug_counter = 0;
 
@@ -73,26 +61,21 @@ void data_handler_command_processor(void)
     case 0x7A: //z Zero
         NRF_LOG_INFO("little z");
         average_data = true;
-        zero_request = true;
         max_average_count = 255;
         break;
 
-    case 0x61: //average 
-        average_data = true;
-        max_average_count = data_handler_command_number_return(1);
-        NRF_LOG_INFO("little a %d",max_average_count);
+    case 0x61: //a for averagee 
         break;
 
-    case 0x63: //c Calibration coefficient
+    case 0x63: //c 
         NRF_LOG_INFO("little c");
-        data_handler_command_gear_value();
         break;
 
-    case 0x62: //b Calibration coefficient
+    case 0x62: //b 
         NRF_LOG_INFO("little b");
         break;
     
-    case 0x66: //f Calibration coefficient
+    case 0x66: //f force save coefficients
         NRF_LOG_INFO("little f");
         data_handler_force_save(command_message[1]);
         break;
@@ -107,28 +90,28 @@ void data_handler_command_processor(void)
         data_handler_show_gains();
         break;
 
-    case 0x6D: //m Force Output
+    case 0x6D: //m 
         NRF_LOG_INFO("little m");
         break;
 
     case 0x70: //p Set Kp
         NRF_LOG_INFO("little P");
         epx_values.Kp =  data_handler_command_float_return(1);
-        // update_Kp(epx_values.Kp);
+        pid_update_gains();
         data_handler_show_gains();
         break;
 
     case 0x69: //i set Ki
         NRF_LOG_INFO("little i");
         epx_values.Ki =  data_handler_command_float_return(1);
-        // update_Ki(epx_values.Ki);
+        pid_update_gains();
         data_handler_show_gains();
         break;
 
     case 0x64: //d Set Kd
         NRF_LOG_INFO("little d");
         epx_values.Kd =  data_handler_command_float_return(1);
-        // update_Kd(epx_values.Kd);
+        pid_update_gains();
         data_handler_show_gains();
         break;
 
@@ -258,9 +241,6 @@ void data_handler_sch_execute(void)
 void data_handler_get_flash_values(void)
 {
     epx_values = tm_fds_epx_config();
-    update_Kp(epx_values.Kp);
-    update_Ki(epx_values.Ki);
-    update_Kd(epx_values.Kd);
     link_memory(&epx_values);
 }
 
