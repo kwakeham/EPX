@@ -10,28 +10,16 @@
 #include "data_handler.h"
 #include "boards.h"
 #include "math.h"
-// #include "arm_math.h"
 #include "ble_cus.h"
 #include <string.h>
 #include "titan_mem.h"
 #include "mpos.h"
 #include "PID_controller.h"
 
-// #include "hf_time.h"
-// #include "linearinterpolator.h"
-
-#define DEFAULT_AVERAGE_SAMPLES 250
-
-#define MAX_ADC_CHANNELS 4
-#define DATA_BUFFER_LENGTH 4
 #define CHAR_LENGTH 10
 #define DATAOUTENABLE
 
 static char command_message[10] = {}; 
-
-bool average_data = false;
-int32_t average_count = 0;
-int32_t max_average_count = 0;
 
 bool data_process_command = false;
 
@@ -60,8 +48,6 @@ void data_handler_command_processor(void)
     {
     case 0x7A: //z Zero
         NRF_LOG_INFO("little z");
-        average_data = true;
-        max_average_count = 255;
         break;
 
     case 0x61: //a for averagee 
@@ -242,14 +228,4 @@ void data_handler_get_flash_values(void)
 {
     epx_values = tm_fds_epx_config();
     link_memory(&epx_values);
-}
-
-bool data_handler_averaging(void)
-{
-    return average_data;
-}
-
-int32_t data_handler_averaging_count(void)
-{
-    return average_count;
 }

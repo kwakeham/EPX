@@ -31,8 +31,4 @@ void data_handler_sch_execute(void);
 
 void data_handler_get_flash_values(void);
 
-bool data_handler_averaging(void);
-
-int32_t data_handler_averaging_count(void);
-
 #endif
