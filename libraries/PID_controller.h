@@ -19,21 +19,7 @@
  * 
  * @param temp_Kp 
  */
-void update_Kp(float temp_Kp);
-
-/**
- * @brief update the ki from default
- * 
- * @param temp_Ki 
- */
-void update_Ki(float temp_Ki);
-
-/**
- * @brief update the ki from default
- * 
- * @param temp_Kd
- */
-void update_Kd(float temp_Kd);
+void pid_update_gains(void);
 
 void link_memory(epx_configuration_t *temp_link_epx_values);
 
