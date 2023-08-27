@@ -78,28 +78,15 @@ static struct
 static epx_configuration_t m_epx_cfg =
 {
     .num_gears = 0,
-    .gear1_pos = 0,
-    .gear2_pos = 0,
-    .gear3_pos = 0,
-    .gear4_pos = 0,
-    .gear5_pos = 0,
-    .gear6_pos = 0,
-    .gear7_pos = 0,
-    .gear8_pos = 0,
-    .gear9_pos = 0,
-    .gear10_pos = 0,
-    .gear11_pos = 0,
-    .gear12_pos = 0,
-    .gear13_pos = 0,
-    .gear14_pos = 0,
+    .gear_pos = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 
     .Kp = 0.0f,
     .Ki = 0.0f,
     .Kd = 0.0f,
 
-    .sleep_rotations = 0,
-    .sleep_angle = 0,
-    .sleep_gear = 0,
+    .current_rotations = 0,
+    .current_angle = 0,
+    .current_gear = 0,
 
     .upshifts = 0,
     .downshifts = 0,
@@ -108,8 +95,6 @@ static epx_configuration_t m_epx_cfg =
     .sin_max = 0,
     .cos_min = 0,
     .cos_max = 0,
-
-
 };
 
 /* A record containing configuration data. */

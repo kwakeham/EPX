@@ -45,6 +45,7 @@ void data_handler_command(const char* p_chars, uint32_t length)
 void data_handler_command_processor(void)
 {
     command_message[0] = tolower(command_message[0]);
+    command_message[1] = tolower(command_message[1]);
     // NRF_LOG_INFO("command processor: %s", command_message);
     switch (command_message[0])
     {
@@ -58,7 +59,6 @@ void data_handler_command_processor(void)
         NRF_LOG_INFO("little g");
         data_handler_command_gear_value();
         break;
-
     
     case 0x6B: //k List Gains
         NRF_LOG_INFO("little k");
@@ -89,6 +89,14 @@ void data_handler_command_processor(void)
         epx_values.Kd =  data_handler_command_float_return(1);
         pid_update_gains();
         data_handler_show_gains();
+        break;
+
+    case 0x73: //s 
+        NRF_LOG_INFO("little s");
+        if (shift_mode)
+        {
+            data_handler_shift_geat_handler();
+        }
         break;
 
     case 0x74: //t Target Angle in degrees
@@ -132,9 +140,39 @@ void data_handler_force_save(char command)
     NRF_LOG_INFO("Force save");
 }
 
+void data_handler_shift_geat_handler(void)
+{
+    switch (command_message[1])
+    {
+    case 0x2B: //+
+        epx_values.current_gear++;
+
+        break;
+    case 0x2D: //-
+        epx_values.current_gear--;
+        break;
+    default:
+        epx_values.current_gear = data_handler_command_number_return(1);
+        break;
+    }
+
+    //guards
+    if(epx_values.current_gear > epx_values.num_gears)
+    {
+        epx_values.current_gear = epx_values.num_gears;
+    }
+
+    if(epx_values.current_gear <= 0)
+    {
+        epx_values.current_gear = 1;
+    }
+
+    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear-1, epx_values.gear_pos[(epx_values.current_gear-1)]);
+
+}
+
 void data_handler_shift_mode_handler(void)
 {
-    command_message[1] = tolower(command_message[1]);
     switch (command_message[1])
     {
     case 0x61: //a
@@ -158,54 +196,61 @@ void data_handler_shift_mode_handler(void)
 void data_handler_command_gear_value(void)
 {
     update_flash = true;
-    
+
     switch (command_message[1])
     {
     case 0x31: //1
-        epx_values.gear1_pos = data_handler_command_number_return(2);
+        epx_values.gear_pos[0] = data_handler_command_number_return(2);
         break;
     case 0x32: //2
-        epx_values.gear2_pos = data_handler_command_number_return(2);
+        epx_values.gear_pos[1] = data_handler_command_number_return(2);
         break;
     case 0x33: //3
-        epx_values.gear3_pos = data_handler_command_number_return(2);
+        epx_values.gear_pos[2] = data_handler_command_number_return(2);
         break;
     case 0x34: //4
-        epx_values.gear4_pos = data_handler_command_number_return(2);
+        epx_values.gear_pos[3] = data_handler_command_number_return(2);
         break;
     case 0x35: //5
-        epx_values.gear5_pos = data_handler_command_number_return(2);
+        epx_values.gear_pos[4] = data_handler_command_number_return(2);
         break;
     case 0x36: //6
-        epx_values.gear6_pos = data_handler_command_number_return(2);
+        epx_values.gear_pos[5] = data_handler_command_number_return(2);
         break;
     case 0x37: //7
-        epx_values.gear7_pos = data_handler_command_number_return(2);
+        epx_values.gear_pos[6] = data_handler_command_number_return(2);
         break;
     case 0x38: //8
-        epx_values.gear8_pos = data_handler_command_number_return(2);
+        epx_values.gear_pos[7] = data_handler_command_number_return(2);
         break;
     case 0x39: //9
-        epx_values.gear9_pos = data_handler_command_number_return(2);
+        epx_values.gear_pos[8] = data_handler_command_number_return(2);
         break;
-    case 0x61: //a
-        epx_values.gear10_pos = data_handler_command_number_return(2);
+    case 0x61: //10 - a
+        epx_values.gear_pos[9] = data_handler_command_number_return(2);
         break;
-    case 0x62: //b
-        epx_values.gear11_pos = data_handler_command_number_return(2);
+    case 0x62: //11 - b
+        epx_values.gear_pos[10] = data_handler_command_number_return(2);
         break;
-    case 0x63: //c
-        epx_values.gear12_pos = data_handler_command_number_return(2);
+    case 0x63: //12 - c
+        epx_values.gear_pos[11] = data_handler_command_number_return(2);
         break;
-    case 0x64: //d
-        epx_values.gear13_pos = data_handler_command_number_return(2);
+    case 0x64: //13 - d
+        epx_values.gear_pos[12] = data_handler_command_number_return(2);
+        break;
+    case 0x65: //14 - e
+        epx_values.gear_pos[12] = data_handler_command_number_return(2);
+        break;
+    case 0x66: //f
+        epx_values.num_gears = data_handler_command_number_return(2);
+        NRF_LOG_INFO(" %d" , epx_values.num_gears);
         break;
     default:
         update_flash = false; //if it wasn't the other cases, don't update the flash memory
         break;
     }
-    sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear1_pos,epx_values.gear2_pos,epx_values.gear3_pos,epx_values.gear4_pos, epx_values.gear5_pos, epx_values.gear6_pos);
-    sprintf(buff2, "Gear 7: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear7_pos,epx_values.gear8_pos,epx_values.gear9_pos, epx_values.gear10_pos,epx_values.gear11_pos, epx_values.gear12_pos);
+    sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear_pos[0], epx_values.gear_pos[1], epx_values.gear_pos[2], epx_values.gear_pos[3], epx_values.gear_pos[4], epx_values.gear_pos[5]);
+    sprintf(buff2, "Gear 7: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear_pos[6], epx_values.gear_pos[7], epx_values.gear_pos[8], epx_values.gear_pos[9], epx_values.gear_pos[10], epx_values.gear_pos[11]);
 
     NRF_LOG_INFO(" %s %d" , buff1);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
