@@ -249,7 +249,7 @@ void mpos_display_value(void)
         // }
         // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
 
-        NRF_LOG_RAW_INFO( NRF_LOG_FLOAT_MARKER "\n", NRF_LOG_FLOAT(temp_angle));
+        // NRF_LOG_RAW_INFO( NRF_LOG_FLOAT_MARKER "\n", NRF_LOG_FLOAT(temp_angle));
         
         drv8874_drive((int16_t)drive);
     }
