@@ -157,17 +157,18 @@ void data_handler_shift_geat_handler(void)
     }
 
     //guards
-    if(epx_values.current_gear > epx_values.num_gears)
+    if(epx_values.current_gear > epx_values.num_gears-1)
     {
-        epx_values.current_gear = epx_values.num_gears;
+        epx_values.current_gear = epx_values.num_gears-1;
     }
 
-    if(epx_values.current_gear <= 0)
+    if(epx_values.current_gear < 0)
     {
-        epx_values.current_gear = 1;
+        epx_values.current_gear = 0;
     }
 
-    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear-1, epx_values.gear_pos[(epx_values.current_gear-1)]);
+    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear, epx_values.gear_pos[(epx_values.current_gear)]);
+    // mpo
 
 }
 
