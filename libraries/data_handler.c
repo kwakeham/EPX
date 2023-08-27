@@ -146,7 +146,6 @@ void data_handler_shift_geat_handler(void)
     {
     case 0x2B: //+
         epx_values.current_gear++;
-
         break;
     case 0x2D: //-
         epx_values.current_gear--;
@@ -168,7 +167,7 @@ void data_handler_shift_geat_handler(void)
     }
 
     NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear, epx_values.gear_pos[(epx_values.current_gear)]);
-    // mpo
+    mpos_update_angle((float)epx_values.gear_pos[(epx_values.current_gear)]);
 
 }
 
