@@ -51,7 +51,7 @@ void saadc_callback(nrfx_saadc_evt_t const * p_event)
     if (p_event->type == NRFX_SAADC_EVT_DONE) //Capture offset calibration complete event
     {
         update_position = true;
-        nrf_gpio_pin_set(S_HALL_EN);
+        nrf_gpio_pin_set(S_HALL_EN);  //Turn off the Hall effect sensors to save power
     }
     else if (p_event->type == NRFX_SAADC_EVT_CALIBRATEDONE)
     {
@@ -64,7 +64,7 @@ void mpos_timer_handler(void *p_context)
     
 
     // ret_code_t err_code;
-    nrf_gpio_pin_clear(S_HALL_EN);
+    nrf_gpio_pin_clear(S_HALL_EN); //Enable the hall effect sensors, this starts drawing current
     mpos_convert(); //do a converstion
     // err_code = app_timer_start(m_saadc_acquire, 4, NULL); 
     // APP_ERROR_CHECK(err_code);
@@ -76,7 +76,7 @@ void mpos_acquire(void *p_context)
 }
 
 
-void mpos_init(void)
+void mpos_init(void) //Initialize the SAADC and timers for sampling
 {
     NRF_LOG_INFO("MPOS init");
     ret_code_t err_code;
@@ -87,7 +87,7 @@ void mpos_init(void)
     saadc_config.interrupt_priority = 5; //Hmmm?
     saadc_config.low_power_mode = false;
 
-    err_code = nrfx_saadc_init(&saadc_config, saadc_callback);
+    err_code = nrfx_saadc_init(&saadc_config, saadc_callback); //this callback handles the peripheral when it's done
     APP_ERROR_CHECK(err_code);
 
     nrf_saadc_channel_config_t chan_config = {
@@ -123,10 +123,7 @@ void mpos_init(void)
     err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
     APP_ERROR_CHECK(err_code);
 
-    err_code = app_timer_create(&m_saadc_acquire, APP_TIMER_MODE_SINGLE_SHOT, mpos_acquire);
-    APP_ERROR_CHECK(err_code);
-
-    err_code = app_timer_start(m_repeat_action, 128, NULL); 
+    err_code = app_timer_start(m_repeat_action, 128, NULL); //This starts the sampling timer for mpos_timer_handler
     APP_ERROR_CHECK(err_code);
 
     nrf_gpio_cfg_output(S_HALL_EN);
@@ -150,7 +147,7 @@ int16_t mpos_test_convert(void)
     return (-8007);
 }
 
-void mpos_convert(void)
+void mpos_convert(void) //this queues the peripheral to sample the data autonomously
 {
     ret_code_t err_code;
     err_code = nrfx_saadc_buffer_convert(m_buffer_pool, 3); //setup the buffer to convert
