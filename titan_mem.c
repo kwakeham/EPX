@@ -22,6 +22,10 @@
 #define MEM_END 0x71fff
 #define FILE_ID         0x0001  /* The ID of the file to write the records into. */
 #define RECORD_KEY_1    0x1234  /* A key for the first record. */
+
+#define FILE_ID_SLEEP         0x0002  /* The ID of the file to write the records into. */
+#define RECORD_KEY_SLEEP_1    0x0ABC  /* A key for the first record. */
+
 static uint32_t   const m_deadbeef = 0xDEADBEEF;
 // static char       const m_hello[]  = "Hello, world!";
 fds_record_t        record;
@@ -97,6 +101,16 @@ static epx_configuration_t m_epx_cfg =
     .cos_max = 0,
 };
 
+static epx_sleep_configuration_t m_epx_sleep_cfg =
+{
+    .current_rotations = 0,
+    .current_angle = 0,
+    .current_gear = 0,
+
+    .upshifts = 0,
+    .downshifts = 0,
+};
+
 /* A record containing configuration data. */
 static fds_record_t const m_epx_record =
 {
@@ -107,6 +121,15 @@ static fds_record_t const m_epx_record =
     .data.length_words = (sizeof(m_epx_cfg)+3) / sizeof(uint32_t), //+3 for rounding
 };
 
+/* A record containing configuration data. */
+static fds_record_t const m_epx_sleep_record =
+{
+    .file_id           = FILE_ID_SLEEP,
+    .key               = RECORD_KEY_SLEEP_1,
+    .data.p_data       = &m_epx_sleep_cfg,
+    /* The length of a record is always expressed in 4-byte units (words). */
+    .data.length_words = (sizeof(m_epx_sleep_cfg)+3) / sizeof(uint32_t), //+3 for rounding
+};
 
 
 NRF_FSTORAGE_DEF(nrf_fstorage_t titan_mem) =
@@ -276,6 +299,7 @@ void tm_fds_config_init()
 
     if (rc == NRF_SUCCESS)
     {
+        NRF_LOG_INFO("Found config file...");
         /* A config file is in flash. Let's update it. */
         fds_flash_record_t config = {0};
 
@@ -289,9 +313,6 @@ void tm_fds_config_init()
         /* Close the record when done reading. */
         rc = fds_record_close(&desc);
         APP_ERROR_CHECK(rc);
-        // char tm_debug_message[20];
-        // sprintf(tm_debug_message,"%ld, %.5f",m_epx_cfg.zero, m_epx_cfg.calibration);
-        // NRF_LOG_INFO("%s",tm_debug_message);
     }
     else
     {
@@ -299,6 +320,34 @@ void tm_fds_config_init()
         NRF_LOG_INFO("Writing config file...");
 
         rc = fds_record_write(&desc, &m_epx_record);
+        APP_ERROR_CHECK(rc);
+    }
+
+    rc = fds_record_find(FILE_ID_SLEEP, RECORD_KEY_SLEEP_1, &desc, &tok);
+
+    if (rc == NRF_SUCCESS)
+    {
+        NRF_LOG_INFO("Found sleep file...");
+        /* A config file is in flash. Let's update it. */
+        fds_flash_record_t config = {0};
+
+        /* Open the record and read its contents. */
+        rc = fds_record_open(&desc, &config);
+        APP_ERROR_CHECK(rc);
+
+        /* Copy the configuration from flash into m_epx_cfg. */
+        memcpy(&m_epx_sleep_cfg, config.p_data, sizeof(epx_sleep_configuration_t));
+
+        /* Close the record when done reading. */
+        rc = fds_record_close(&desc);
+        APP_ERROR_CHECK(rc);
+    }
+    else
+    {
+        /* System config not found; write a new one. */
+        NRF_LOG_INFO("Writing sleep file...");
+
+        rc = fds_record_write(&desc, &m_epx_sleep_record);
         APP_ERROR_CHECK(rc);
     }
 }

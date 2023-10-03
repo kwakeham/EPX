@@ -44,6 +44,20 @@ typedef struct
 
 } epx_configuration_t;
 
+/* A dummy structure to save in flash. */
+typedef struct
+{
+    //current information for sleep restore data
+    int32_t current_rotations;
+    int32_t current_angle;
+    uint8_t current_gear;
+
+    //Historic data
+    uint32_t upshifts;
+    uint32_t downshifts;
+
+} epx_sleep_configuration_t;
+
 epx_configuration_t tm_fds_epx_config ();
 
 void tm_fds_init();
