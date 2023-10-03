@@ -41,7 +41,7 @@ static int8_t rotation_count = 0;
 static double angle_old;
 
 APP_TIMER_DEF(m_repeat_action);
-APP_TIMER_DEF(m_saadc_acquire);
+// APP_TIMER_DEF(m_saadc_acquire);
 
 float ble_angle = 180.0f;
 
