@@ -24,7 +24,11 @@ uint32_t mpos_debug_counter = 0;
 #define default_sin_cos_offset 2078 //Half?
 #define default_range 50
 
+#define sleep_threshold 600
 static bool update_position = false; // Flag to know if a new position has been acquired
+static bool shifting = true;
+static uint16_t sleep_count = 0;
+
 static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, isense order
 
 static nrf_saadc_value_t sin_cos[2]; //stores the current value of sin in sin_cos[0] and cos in sin_cos[1]
@@ -119,7 +123,7 @@ void mpos_init(void) //Initialize the SAADC and timers for sampling
     err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
     APP_ERROR_CHECK(err_code);
 
-    err_code = app_timer_start(m_repeat_action, 128, NULL); //This starts the sampling timer for mpos_timer_handler
+    err_code = app_timer_start(m_repeat_action, 128, NULL); //This starts the sampling timer for mpos_timer_handler -- 256 hz
     APP_ERROR_CHECK(err_code);
 
     nrf_gpio_cfg_output(S_HALL_EN);
@@ -221,7 +225,7 @@ void mpos_update_angle(float target_angle)
 
 void mpos_display_value(void)
 {
-    if (update_position)
+    if (update_position) // if we got an updated position
     {
         update_position = false;
         // angle(m_buffer_pool[0], m_buffer_pool(1));
@@ -235,16 +239,42 @@ void mpos_display_value(void)
 
         float drive = pidController(ble_angle,(float)temp_angle);
 
+        if (!shifting) //if we aren't shifting 
+        {
+            if ((int16_t)(ble_angle - temp_angle) > 10 || (int16_t)(ble_angle - temp_angle) < -10) // this will be the trigger to wake the motor controller
+            {
+                    NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
+                    shifting = true; // if the drive strength is large then on the next
+                    drv8874_nsleep(1); //wake the motor driver since the next time around we'll have to drive it.
+            }
+            drive = 0.0f; // Override and set the drive strength of the motor to 0 just in case
+        } else
+        {
+            if(drive < 20.0f && drive > -20.0f)
+            {
+                sleep_count++; // sleep counter
+                if (sleep_count > sleep_threshold) //if we're above the threshold then we're ready to sleep the motor driver and leave shift mode
+                {
+                    NRF_LOG_INFO("Sleep the motor driver"); //debug statement for testing
+                    shifting = false; // leave shift mode
+                    drv8874_nsleep(0); //sleep the motor driver
+                    sleep_count = 0 ; //reset the sleep count last
+                }
+            }
+        }
+
+        drv8874_drive((int16_t)drive);
+
         mpos_debug_counter++;
-        // if (mpos_debug_counter %20 == 0)
-        // {
-        //     NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1],drive_int,NRF_LOG_FLOAT(temp_angle));
-        // }
+        if (mpos_debug_counter %256 == 0)
+        {
+            NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], drive, NRF_LOG_FLOAT(temp_angle));
+        }
         // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
 
         // NRF_LOG_RAW_INFO( NRF_LOG_FLOAT_MARKER "\n", NRF_LOG_FLOAT(temp_angle));
         
-        drv8874_drive((int16_t)drive);
+
     }
 
 }
