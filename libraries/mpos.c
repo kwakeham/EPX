@@ -42,7 +42,6 @@ static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
 static double angle_old; // last angle to keep track of if we need to add or subtract an angle
 
 APP_TIMER_DEF(m_repeat_action);
-// APP_TIMER_DEF(m_saadc_acquire);
 
 float ble_angle = 180.0f;
 
@@ -62,13 +61,9 @@ void saadc_callback(nrfx_saadc_evt_t const * p_event)
 
 void mpos_timer_handler(void *p_context)
 {
-    
-
     // ret_code_t err_code;
     nrf_gpio_pin_clear(S_HALL_EN); //Enable the hall effect sensors, this starts drawing current
     mpos_convert(); //do a converstion
-    // err_code = app_timer_start(m_saadc_acquire, 4, NULL); 
-    // APP_ERROR_CHECK(err_code);
 }
 
 void mpos_acquire(void *p_context)
