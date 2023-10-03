@@ -39,7 +39,12 @@ void drv8874_init(void);
 
 void drv8874_drive(int16_t drv8874_duty);
 
-void drv8874_shutdown(void);
+/**
+ * @brief sleep the motor driver
+ * 
+ * @param nsleep_req 1 = awake, so not sleep, 0 = sleep
+ */
+void drv8874_nsleep(bool nsleep_req);
 
 #ifdef __cplusplus
 }

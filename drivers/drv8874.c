@@ -82,3 +82,8 @@ void drv8874_drive(int16_t drv8874_duty){
         pwm_values.channel_1 = 0;
     }
 }
+
+void drv8874_nsleep(bool nsleep_req)
+{
+    nrf_gpio_pin_write(M_nSleep, nsleep_req);
+}
