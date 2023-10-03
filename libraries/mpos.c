@@ -23,8 +23,9 @@ uint32_t mpos_debug_counter = 0;
 // #define count_offset 2350 //3.3v
 #define default_sin_cos_offset 2078 //Half?
 #define default_range 50
-static bool update_position = false;
-static nrf_saadc_value_t m_buffer_pool[3];
+
+static bool update_position = false; // Flag to know if a new position has been acquired
+static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, isense order
 
 static nrf_saadc_value_t sin_cos[2]; //stores the current value of sin in sin_cos[0] and cos in sin_cos[1]
 
@@ -37,8 +38,8 @@ static nrf_saadc_value_t cos_max;
 static nrf_saadc_value_t sin_avg;
 static nrf_saadc_value_t cos_avg;
 
-static int8_t rotation_count = 0;
-static double angle_old;
+static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
+static double angle_old; // last angle to keep track of if we need to add or subtract an angle
 
 APP_TIMER_DEF(m_repeat_action);
 // APP_TIMER_DEF(m_saadc_acquire);
