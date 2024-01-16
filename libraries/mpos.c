@@ -25,6 +25,7 @@ uint32_t mpos_debug_counter = 0;
 #define default_range 50
 
 #define sleep_threshold 600
+#define angle_threshold 10
 static bool update_position = false; // Flag to know if a new position has been acquired
 static bool shifting = true;
 static uint16_t sleep_count = 0;
@@ -241,7 +242,7 @@ void mpos_display_value(void)
 
         if (!shifting) //if we aren't shifting 
         {
-            if ((int16_t)(ble_angle - temp_angle) > 10 || (int16_t)(ble_angle - temp_angle) < -10) // this will be the trigger to wake the motor controller
+            if ((int16_t)(ble_angle - temp_angle) > angle_threshold || (int16_t)(temp_angle - ble_angle) > angle_threshold) // this will be the trigger to wake the motor controller
             {
                     NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
                     shifting = true; // if the drive strength is large then on the next
