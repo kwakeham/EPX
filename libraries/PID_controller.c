@@ -22,8 +22,8 @@ float Kp = 10.0;   // Proportional gain
 float Ki = 1.5;  // Integral gain
 float Kd = 3;  // Derivative gain
 
-//At 256hz (128 repeat) kp = 18
 //At 128hz kp = 9
+//At 256hz (128 repeat) kp = 18
 //AT 512hz kp = 35-40
 
 

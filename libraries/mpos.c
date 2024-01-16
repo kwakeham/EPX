@@ -230,19 +230,19 @@ void mpos_display_value(void)
     {
         update_position = false;
         // angle(m_buffer_pool[0], m_buffer_pool(1));
-        float temp_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
+        float current_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
         sin_cos[0] = m_buffer_pool[0];
         sin_cos[1] = m_buffer_pool[1];
 
         mpos_min_max(); // store min max for average offset
 
-        temp_angle += rotation_count*360;
+        current_angle += rotation_count*360;
 
-        float drive = pidController(ble_angle,(float)temp_angle);
+        float drive = pidController(ble_angle,(float)current_angle);
 
         if (!shifting) //if we aren't shifting 
         {
-            if ((int16_t)(ble_angle - temp_angle) > angle_threshold || (int16_t)(temp_angle - ble_angle) > angle_threshold) // this will be the trigger to wake the motor controller
+            if ((int16_t)(ble_angle - current_angle) > angle_threshold || (int16_t)(current_angle - ble_angle) > angle_threshold) // this will be the trigger to wake the motor controller
             {
                     NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
                     shifting = true; // if the drive strength is large then on the next
@@ -269,11 +269,11 @@ void mpos_display_value(void)
         mpos_debug_counter++;
         if (mpos_debug_counter %256 == 0)
         {
-            NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], drive, NRF_LOG_FLOAT(temp_angle));
+            NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], drive, NRF_LOG_FLOAT(current_angle));
         }
         // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
 
-        // NRF_LOG_RAW_INFO( NRF_LOG_FLOAT_MARKER "\n", NRF_LOG_FLOAT(temp_angle));
+        // NRF_LOG_RAW_INFO( NRF_LOG_FLOAT_MARKER "\n", NRF_LOG_FLOAT(current_angle));
         
 
     }
