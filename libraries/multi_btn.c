@@ -108,8 +108,6 @@ void button_timeout_handler (void * p_context)
 				m_registered_callback(MULTI_BTN_EVENT_CH2_LONG_CONT);
 			}
 			btn_CH2_press_count = 0;
-			// btn_CH3_press_count = 0;
-			// btn_CH4_press_count = 0;
 		}
 
 		if (cnt_CH1 >= LONG_PRESS(1000))
@@ -377,16 +375,6 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 				btn_CH4_press_count++;
 				break;
 
-#ifdef MULTI_BTN_PIN_CH6
-			case MULTI_BTN_PIN_CH5:
-				btn_CH5_pressed = 1;
-				break;
-
-			case MULTI_BTN_PIN_CH6:
-				btn_CH6_pressed = 1;
-				break;
-#endif
-
 			default:
 			break;
 		}
@@ -395,18 +383,17 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 
 }
 
-
-
 void multi_buttons_init(multibtn_event_callback_t callback)
 {
 	uint32_t err_code;
 
-	//   button_cfg
+	// Register a callback
 	m_registered_callback = callback;
 
+	// If button isn't initialized then initialize, to prevent re-initializing the buttons except at startup
 	if (is_button_init == 0) {
 		is_button_init++;
-		err_code = app_button_init(button_cfg, sizeof(button_cfg) / sizeof(button_cfg[0]), APP_TIMER_TICKS(40));
+		err_code = app_button_init(button_cfg, sizeof(button_cfg) / sizeof(button_cfg[0]), APP_TIMER_TICKS(20));
 		APP_ERROR_CHECK(err_code);
 	}
 
@@ -420,9 +407,6 @@ void multi_buttons_init(multibtn_event_callback_t callback)
 	btn_CH2_press_count = 0;
 	btn_CH3_press_count = 0;
 	btn_CH4_press_count = 0;
-
-	btn_CH5_pressed = 0;
-	btn_CH6_pressed = 0;
 
 	long_press_active_CH1 = false;
 	long_press_active_CH2 = false;
