@@ -52,14 +52,6 @@ typedef void (* multibtn_event_callback_t)(multibtn_event_t);
 // void button_timeout_handler(void * p_context);
 void button_timeout_handler(void * p_context);
 
-/**@brief repeat_timeout_handler.
- *
- * @details     Upon an event in the BSP module, this callback function will be called to notify
- *              the application about the event.
- *
- * @param[in]   p_context .
- */
-void repeat_timeout_handler(void * p_context);
 
 
 /**@brief button_callback function type.

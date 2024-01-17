@@ -92,259 +92,10 @@ void button_timeout_handler (void * p_context)
 	// disable by default
 	timer_run = false;
 
-	if (CH2_pushed && CH1_pushed)
-	{
-		cnt_CH1++;
-		cnt_CH2++;
-		if ( cnt_CH2 >= LONG_PRESS(1000))
-		{
-			cnt_CH2 = cnt_CH2 - LONG_PRESS(1000);
-			if (!long_press_active_CH2)
-			{
-				long_press_active_CH2 = true;
-				m_registered_callback(MULTI_BTN_EVENT_CH2_LONG);
-			} else
-			{
-				m_registered_callback(MULTI_BTN_EVENT_CH2_LONG_CONT);
-			}
-			btn_CH2_press_count = 0;
-		}
 
-		if (cnt_CH1 >= LONG_PRESS(1000))
-		{
-			cnt_CH1 = cnt_CH1 - LONG_PRESS(1000);
-			if (!long_press_active_CH1)
-			{
-				long_press_active_CH1 = true;
-				m_registered_callback(MULTI_BTN_EVENT_CH1_LONG);
-			} else
-			{
-				m_registered_callback(MULTI_BTN_EVENT_CH1_LONG_CONT);
-			}
-			btn_CH1_press_count = 0;
-		}
-		timer_run = true;
-	}
-	else if (CH1_pushed)
-	{
-		cnt_CH1++;
-		if ( cnt_CH1 >= LONG_PRESS(1000))
-		{
-			cnt_CH1 = cnt_CH1 - LONG_PRESS(1000);
-			if (!long_press_active_CH1)
-			{
-				long_press_active_CH1 = true;
-				m_registered_callback(MULTI_BTN_EVENT_CH1_LONG);
-
-			} else
-			{
-				m_registered_callback(MULTI_BTN_EVENT_CH1_LONG_CONT);
-			}
-			btn_CH1_press_count = 0;
-		}
-		timer_run = true;
-		cnt_CH2 = 0;
-		cnt_CH3 = 0;
-		cnt_CH4 = 0;
-	}
-	else if (CH2_pushed)
-	{
-		cnt_CH2++;
-		if ( cnt_CH2 >= LONG_PRESS(1000))
-		{
-			cnt_CH2 = cnt_CH2 - LONG_PRESS(1000);
-			if (!long_press_active_CH2)
-			{
-				long_press_active_CH2 = true;
-
-				m_registered_callback(MULTI_BTN_EVENT_CH2_LONG);
-			} else
-			{
-				m_registered_callback(MULTI_BTN_EVENT_CH2_LONG_CONT);
-			}
-			btn_CH2_press_count = 0;
-		}
-		timer_run = true;
-		cnt_CH1 = 0;
-		cnt_CH3 = 0;
-		cnt_CH4 = 0;
-	}
-	else if (CH3_pushed)
-	{
-		cnt_CH3++;
-		if ( cnt_CH3 >= LONG_PRESS(1000))
-		{
-			cnt_CH3 = cnt_CH3 - LONG_PRESS(1000);
-			if (!long_press_active_CH3)
-			{
-				long_press_active_CH3 = true;
-
-				m_registered_callback(MULTI_BTN_EVENT_CH3_LONG);
-			} else
-			{
-				m_registered_callback(MULTI_BTN_EVENT_CH3_LONG_CONT);
-			}
-			btn_CH3_press_count = 0;
-		}
-		timer_run = true;
-		cnt_CH2 = 0;
-		cnt_CH1 =  0;
-		cnt_CH4 = 0;
-	}
-	else if (CH4_pushed)
-	{
-		cnt_CH4++;
-		if ( cnt_CH4 >= LONG_PRESS(1000))
-		{
-			cnt_CH4 = cnt_CH4 - LONG_PRESS(1000);
-			if (!long_press_active_CH4)
-			{
-				long_press_active_CH4 = true;
-
-				m_registered_callback(MULTI_BTN_EVENT_CH4_LONG);
-			} else
-			{
-				m_registered_callback(MULTI_BTN_EVENT_CH4_LONG_CONT);
-			}
-			btn_CH4_press_count = 0;
-		}
-		timer_run = true;
-		cnt_CH2 = 0;
-		cnt_CH1 = 0;
-		cnt_CH3 = 0;
-	}
-
-	else // no button is pressed
-	{
-		if (long_press_active_CH1)
-		{
-			long_press_active_CH1 = false;
-			m_registered_callback(MULTI_BTN_EVENT_CH1_LONG_RELEASE);
-		}
-		else if (!long_press_active_CH1 && cnt_CH1 >= (LONG_PRESS(600)))  // This fixes the edge case of between 600ms time out and the 1000ms long
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH1);
-			// LOG_INFO("Edgecase");
-		}
-
-		if (long_press_active_CH2)
-		{
-			long_press_active_CH2 = false;
-			m_registered_callback(MULTI_BTN_EVENT_CH2_LONG_RELEASE);
-		}
-		else if (!long_press_active_CH2 && cnt_CH2 >= (LONG_PRESS(600)))  // This fixes the edge case of between 600ms time out and the 1000ms long
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH2);
-		}
-		
-		if (long_press_active_CH3)
-		{
-			long_press_active_CH3 = false;
-			m_registered_callback(MULTI_BTN_EVENT_CH3_LONG_RELEASE);
-		}
-		else if (!long_press_active_CH3 && cnt_CH3 >= (LONG_PRESS(600)))  // This fixes the edge case of between 600ms time out and the 1000ms long
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH3);
-		}
-
-		if (long_press_active_CH4)
-		{
-			long_press_active_CH4 = false;
-			m_registered_callback(MULTI_BTN_EVENT_CH4_LONG_RELEASE);
-		}
-		else if (!long_press_active_CH4 && cnt_CH4 >= (LONG_PRESS(600)))  // This fixes the edge case of between 600ms time out and the 1000ms long
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH4);
-		}
-		cnt_CH1 = 0; // Reset the counter
-		cnt_CH2 = 0;
-		cnt_CH3 = 0;
-		cnt_CH4 = 0;
-	}
-
-}
-
-void repeat_timeout_handler(void * p_context)
-{
-	if (!long_press_active_CH1  && (cnt_CH1 < (LONG_PRESS(600)-1) ))
-	{
-		// LOG_INFO("repeat_timeout_handler: btn 1 pressed %d with cnt = %d", btn_CH1_press_count, cnt_CH1 );
-		if (btn_CH1_press_count == 1)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH1);
-			// LOG_INFO("Edgecase");
-		} else if (btn_CH1_press_count == 2)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH1_DOUBLE);
-		} else if (btn_CH1_press_count == 3)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH1_TRIPLE);
-		}
-		btn_CH1_press_count = 0;
-	}
-
-	if (!long_press_active_CH2 && (cnt_CH2 < (LONG_PRESS(600)-1)))
-	{
-		//Button 2 stuff
-		if (btn_CH2_press_count == 1)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH2);
-		} else if (btn_CH2_press_count == 2)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH2_DOUBLE);
-		} else if (btn_CH2_press_count == 3)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH2_TRIPLE);
-		}
-
-		btn_CH2_press_count = 0;
-	}
-
-	if (!long_press_active_CH3 && (cnt_CH3 < (LONG_PRESS(600)-1)))
-	{
-		//Button 2 stuff
-		if (btn_CH3_press_count == 1)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH3);
-		} else if (btn_CH3_press_count == 2)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH3_DOUBLE);
-		} else if (btn_CH3_press_count == 3)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH3_TRIPLE);
-		}
-		btn_CH3_press_count = 0;
-	}
-
-	if (!long_press_active_CH4 && (cnt_CH4 < (LONG_PRESS(600)-1)))
-	{
-		//Button 2 stuff
-		if (btn_CH4_press_count == 1)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH4);
-		} else if (btn_CH4_press_count == 2)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH4_DOUBLE);
-		} else if (btn_CH4_press_count == 3)
-		{
-			m_registered_callback(MULTI_BTN_EVENT_CH4_TRIPLE);
-		}
-
-		btn_CH4_press_count = 0;
-	}
-	repeat_run = false;
-	if (btn_CH5_pressed) {
-		btn_CH5_pressed = 0;
-		m_registered_callback(MULTI_BTN_EVENT_CH5);
-	}
-	if (btn_CH6_pressed) {
-		btn_CH6_pressed = 0;
-		m_registered_callback(MULTI_BTN_EVENT_CH6);
-	}
 }
 
 // called by the app_button only
-// seems like it starts the timers
 void button_callback(uint8_t pin_no, uint8_t button_action)
 {
 
@@ -352,7 +103,6 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 
 		// let the timeout run
 		timer_run = true;
-		repeat_run = true;
 		repeat_counter = 0;
 
 		//NRF_LOG_WARNING("Button %d pushed !", pin_no);
@@ -361,18 +111,22 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 
 			case MULTI_BTN_PIN_CH1:
 				btn_CH1_press_count++;
+				m_registered_callback(MULTI_BTN_EVENT_CH1_PUSH);
 				break;
 
 			case MULTI_BTN_PIN_CH2:
 				btn_CH2_press_count++;
+				m_registered_callback(MULTI_BTN_EVENT_CH2_PUSH);
 				break;
 
 			case MULTI_BTN_PIN_CH3:
 				btn_CH3_press_count++;
+				m_registered_callback(MULTI_BTN_EVENT_CH3_PUSH);
 				break;
 
 			case MULTI_BTN_PIN_CH4:
 				btn_CH4_press_count++;
+				m_registered_callback(MULTI_BTN_EVENT_CH4_PUSH);
 				break;
 
 			default:
