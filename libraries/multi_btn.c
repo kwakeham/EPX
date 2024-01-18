@@ -130,6 +130,10 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 			break;
 		}
 	}
+	if (button_action == APP_BUTTON_RELEASE)
+	{
+		NRF_LOG_INFO("oh hai mark");
+	}
 }
 
 void multi_buttons_init(multibtn_event_callback_t callback)
