@@ -23,7 +23,6 @@
 #include "app_util_platform.h"
 
 
-#define BUTTON_STATE_POLL_INTERVAL_MS  10UL
 #define MULTI_PRESS_INTERVAL_MS        600UL
 #define DEBOUNCE_TIME_MS        20UL
 
@@ -32,8 +31,6 @@
 #define MULTI_BTN_PIN_CH2      BUTTON_2
 #define MULTI_BTN_PIN_CH3      BUTTON_3
 #define MULTI_BTN_PIN_CH4      BUTTON_4
-
-#define LONG_PRESS(MS)      (uint32_t)(MS)/BUTTON_STATE_POLL_INTERVAL_MS
 
 //Pullup will be 10 - 15k, this is okay for some stuff but not others
 static app_button_cfg_t  button_cfg[BUTTONS_NUMBER]= {
@@ -71,8 +68,6 @@ static bool long_press_active[4] = {0,0,0,0};
 // } sButtonPairDescr;
 
 static bool timer_run = false;
-static bool repeat_run = false;
-static uint16_t repeat_counter = 0;
 static uint8_t is_button_init=0;
 
 void button_timeout_handler (void * p_context)
@@ -108,22 +103,22 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 
 			case MULTI_BTN_PIN_CH1:
 				// m_registered_callback(MULTI_BTN_EVENT_CH1_PUSH);
-				NRF_LOG_INFO("CH1");
+				NRF_LOG_INFO("CH1 Press");
 				break;
 
 			case MULTI_BTN_PIN_CH2:
 				// m_registered_callback(MULTI_BTN_EVENT_CH2_PUSH);
-				NRF_LOG_INFO("CH2");
+				NRF_LOG_INFO("CH2 Press");
 				break;
 
 			case MULTI_BTN_PIN_CH3:
 				// m_registered_callback(MULTI_BTN_EVENT_CH3_PUSH);
-				NRF_LOG_INFO("CH3");
+				NRF_LOG_INFO("CH3 Press");
 				break;
 
 			case MULTI_BTN_PIN_CH4:
 				// m_registered_callback(MULTI_BTN_EVENT_CH4_PUSH);
-				NRF_LOG_INFO("CH4");
+				NRF_LOG_INFO("CH4 Press");
 				break;
 
 			default:
@@ -132,7 +127,31 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 	}
 	if (button_action == APP_BUTTON_RELEASE)
 	{
-		NRF_LOG_INFO("oh hai mark");
+		switch (pin_no) {
+
+			case MULTI_BTN_PIN_CH1:
+				// m_registered_callback(MULTI_BTN_EVENT_CH1_PUSH);
+				NRF_LOG_INFO("CH1 Released");
+				break;
+
+			case MULTI_BTN_PIN_CH2:
+				// m_registered_callback(MULTI_BTN_EVENT_CH2_PUSH);
+				NRF_LOG_INFO("CH2 Released");
+				break;
+
+			case MULTI_BTN_PIN_CH3:
+				// m_registered_callback(MULTI_BTN_EVENT_CH3_PUSH);
+				NRF_LOG_INFO("CH3 Released");
+				break;
+
+			case MULTI_BTN_PIN_CH4:
+				// m_registered_callback(MULTI_BTN_EVENT_CH4_PUSH);
+				NRF_LOG_INFO("CH4 Released");
+				break;
+
+			default:
+			break;
+		}
 	}
 }
 
@@ -171,12 +190,12 @@ void multi_buttons_tasks(void) {
 		button_timeout_handler(NULL);
 	}
 
-	if (++repeat_counter >= MULTI_PRESS_INTERVAL_MS / BUTTON_STATE_POLL_INTERVAL_MS &&
-			repeat_run) {
+	// if (++repeat_counter >= MULTI_PRESS_INTERVAL_MS / BUTTON_STATE_POLL_INTERVAL_MS &&
+	// 		repeat_run) {
 
 		// repeat_timeout_handler(NULL);
 
-	}
+	// }
 }
 
 void multi_buttons_disable()
