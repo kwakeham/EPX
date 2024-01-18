@@ -105,6 +105,7 @@ SRC_FILES += \
   $(PROJ_DIR)/libraries/mpos.c \
   $(PROJ_DIR)/libraries/PID_controller.c \
   $(PROJ_DIR)/libraries/data_handler.c \
+  $(PROJ_DIR)/libraries/multi_btn.c \
   $(PROJ_DIR)/drivers/drv8874.c \
 
 # Include folders common to all targets

@@ -9,8 +9,8 @@
  * 
  */
 
-#ifndef SOURCE_SENSORS_MULTI_BTN_H_
-#define SOURCE_SENSORS_MULTI_BTN_H_
+#ifndef MULTI_BTN_H_
+#define MULTI_BTN_H_
 
 #include <stdint.h>
 

@@ -99,6 +99,7 @@
 #include "data_handler.h"
 #include "mpos.h"
 #include "drv8874.h"
+#include "multi_btn.h"
 
 
 
@@ -140,6 +141,8 @@ int main(void)
 
     // lis2dtw_start(); //this isn't installed yet
 
+    multi_buttons_init(NULL);
+
     app_timer_init();
 
     ble_cus_init();
@@ -152,6 +155,8 @@ int main(void)
     //Start Saadc and motor drivers
     mpos_init();
     drv8874_init();
+
+
 
     // Enter main loop.
     for (;;)

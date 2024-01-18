@@ -17,18 +17,18 @@
 #include "app_timer.h"
 #include "app_button.h"
 #include "boards.h"
+#include "nrf_log.h"
 #include "sdk_config.h"
 #include "multi_btn.h"
 #include "app_util_platform.h"
-#include "segger_wrapper.h"
 
 
 #define BUTTON_STATE_POLL_INTERVAL_MS  10UL
 #define MULTI_PRESS_INTERVAL_MS        600UL
 
 //Buttons defined via SDK, to change
-#define MULTI_BTN_PIN_CH1      BUTTON_2
-#define MULTI_BTN_PIN_CH2      BUTTON_1
+#define MULTI_BTN_PIN_CH1      BUTTON_1
+#define MULTI_BTN_PIN_CH2      BUTTON_2
 #define MULTI_BTN_PIN_CH3      BUTTON_3
 #define MULTI_BTN_PIN_CH4      BUTTON_4
 
@@ -47,34 +47,27 @@ static void _default_callback(multibtn_event_t evt) {}
 static multibtn_event_callback_t   m_registered_callback = &_default_callback;
 
 //static app_button_cfg_t  button_cfg;
-static uint8_t btn_CH1_press_count = 0;
-static uint8_t btn_CH2_press_count = 0;
-static uint8_t btn_CH3_press_count = 0;
-static uint8_t btn_CH4_press_count = 0;
-static bool long_press_active_CH1;
-static bool long_press_active_CH2;
-static bool long_press_active_CH3;
-static bool long_press_active_CH4;
-static int32_t cnt_CH1 = 0;
-static int32_t cnt_CH2 = 0;
-static int32_t cnt_CH3 = 0;
-static int32_t cnt_CH4 = 0;
+static uint8_t btn_press_count[4] = {0,0,0,0};
+static int16_t button_held_cnt[4] = {0,0,0,0};
+static bool long_press_active[4] = {0,0,0,0};
 
-typedef struct {
-	app_button_cfg_t  button_cfg[BUTTONS_NUMBER];
-	uint8_t btn_CH1_press_count;
-	uint8_t btn_CH2_press_count;
-	uint8_t btn_CH3_press_count;
-	uint8_t btn_CH4_press_count;
-	bool long_press_active_CH1;
-	bool long_press_active_CH2;
-	bool long_press_active_CH3;
-	bool long_press_active_CH4;
-	int32_t cnt_CH1;
-	int32_t cnt_CH2;
-	int32_t cnt_CH3;
-	int32_t cnt_CH4;
-} sButtonPairDescr;
+
+//Do I need this?
+// typedef struct {
+	// app_button_cfg_t  button_cfg[BUTTONS_NUMBER];
+	// uint8_t btn_CH1_press_count;
+	// uint8_t btn_CH2_press_count;
+	// uint8_t btn_CH3_press_count;
+	// uint8_t btn_CH4_press_count;
+	// bool long_press_active_CH1;
+	// bool long_press_active_CH2;
+	// bool long_press_active_CH3;
+	// bool long_press_active_CH4;
+	// int32_t cnt_CH1;
+	// int32_t cnt_CH2;
+	// int32_t cnt_CH3;
+	// int32_t cnt_CH4;
+// } sButtonPairDescr;
 
 static bool timer_run = false;
 static bool repeat_run = false;
@@ -84,14 +77,18 @@ static uint8_t is_button_init=0;
 void button_timeout_handler (void * p_context)
 {
 	// uint32_t err_code;
-	bool CH1_pushed = app_button_is_pushed(0);
-	bool CH2_pushed = app_button_is_pushed(1);
-	bool CH3_pushed = app_button_is_pushed(2);
-	bool CH4_pushed = app_button_is_pushed(3);
+	bool BTN_pushed[4];
 
-	// disable by default
-	timer_run = false;
+	//Loop buttons and check if they are pushed
+	for (size_t i = 0; i < 4; i++)
+	{
+		BTN_pushed[i] = app_button_is_pushed(i);
+		//If the button is pushed 
+		if (BTN_pushed[i])
+		{
 
+		}
+	}
 
 }
 
@@ -101,40 +98,37 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 
 	if (button_action == APP_BUTTON_PUSH) {
 
-		// let the timeout run
+		// run timer to check it's status
 		timer_run = true;
-		repeat_counter = 0;
 
-		//NRF_LOG_WARNING("Button %d pushed !", pin_no);
+		// NRF_LOG_INFO("Button %d pushed !", pin_no);
 
 		switch (pin_no) {
 
 			case MULTI_BTN_PIN_CH1:
-				btn_CH1_press_count++;
-				m_registered_callback(MULTI_BTN_EVENT_CH1_PUSH);
+				// m_registered_callback(MULTI_BTN_EVENT_CH1_PUSH);
+				NRF_LOG_INFO("CH1");
 				break;
 
 			case MULTI_BTN_PIN_CH2:
-				btn_CH2_press_count++;
-				m_registered_callback(MULTI_BTN_EVENT_CH2_PUSH);
+				// m_registered_callback(MULTI_BTN_EVENT_CH2_PUSH);
+				NRF_LOG_INFO("CH2");
 				break;
 
 			case MULTI_BTN_PIN_CH3:
-				btn_CH3_press_count++;
-				m_registered_callback(MULTI_BTN_EVENT_CH3_PUSH);
+				// m_registered_callback(MULTI_BTN_EVENT_CH3_PUSH);
+				NRF_LOG_INFO("CH3");
 				break;
 
 			case MULTI_BTN_PIN_CH4:
-				btn_CH4_press_count++;
-				m_registered_callback(MULTI_BTN_EVENT_CH4_PUSH);
+				// m_registered_callback(MULTI_BTN_EVENT_CH4_PUSH);
+				NRF_LOG_INFO("CH4");
 				break;
 
 			default:
 			break;
 		}
-
 	}
-
 }
 
 void multi_buttons_init(multibtn_event_callback_t callback)
@@ -154,27 +148,16 @@ void multi_buttons_init(multibtn_event_callback_t callback)
 	err_code = app_button_enable();
 	APP_ERROR_CHECK(err_code);
 
-	LOG_INFO("MULTI app button init");
+	NRF_LOG_INFO("MULTI app button init");
 
 	// reset state variables
-	btn_CH1_press_count = 0;
-	btn_CH2_press_count = 0;
-	btn_CH3_press_count = 0;
-	btn_CH4_press_count = 0;
-
-	long_press_active_CH1 = false;
-	long_press_active_CH2 = false;
-	long_press_active_CH3 = false;
-	long_press_active_CH4 = false;
-
-	cnt_CH1 = 0;
-	cnt_CH2 = 0;
-	cnt_CH3 = 0;
-	cnt_CH4 = 0;
-
+	for (size_t i = 0; i < 4; i++)
+	{
+		btn_press_count[i] = 0;
+		button_held_cnt[i] = 0;
+		long_press_active[i] = 0;
+	}
 	timer_run = false;
-	repeat_run = false;
-	repeat_counter = 0;
 }
 
 void multi_buttons_tasks(void) {
@@ -186,9 +169,8 @@ void multi_buttons_tasks(void) {
 	if (++repeat_counter >= MULTI_PRESS_INTERVAL_MS / BUTTON_STATE_POLL_INTERVAL_MS &&
 			repeat_run) {
 
-		repeat_timeout_handler(NULL);
-		repeat_run = false;
-		repeat_counter = 0;
+		// repeat_timeout_handler(NULL);
+
 	}
 }
 
@@ -198,5 +180,5 @@ void multi_buttons_disable()
 
 	err_code = app_button_disable();
 	APP_ERROR_CHECK(err_code);
-	LOG_INFO("MULTI buttons disable");
+	NRF_LOG_INFO("MULTI buttons disable");
 }

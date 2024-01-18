@@ -57,7 +57,7 @@ extern "C" {
 #define LEG_R 24
 
 
-#define BUTTONS_NUMBER 3 //because not in order? TODO: Check this
+#define BUTTONS_NUMBER 4 //because not in order? TODO: Check this
 #define BUTTON_1 20
 #define BUTTON_2 13
 #define BUTTON_3 12
