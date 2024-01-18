@@ -25,6 +25,7 @@
 
 #define BUTTON_STATE_POLL_INTERVAL_MS  10UL
 #define MULTI_PRESS_INTERVAL_MS        600UL
+#define DEBOUNCE_TIME_MS        20UL
 
 //Buttons defined via SDK, to change
 #define MULTI_BTN_PIN_CH1      BUTTON_1
@@ -141,7 +142,7 @@ void multi_buttons_init(multibtn_event_callback_t callback)
 	// If button isn't initialized then initialize, to prevent re-initializing the buttons except at startup
 	if (is_button_init == 0) {
 		is_button_init++;
-		err_code = app_button_init(button_cfg, sizeof(button_cfg) / sizeof(button_cfg[0]), APP_TIMER_TICKS(20));
+		err_code = app_button_init(button_cfg, sizeof(button_cfg) / sizeof(button_cfg[0]), APP_TIMER_TICKS(DEBOUNCE_TIME_MS));
 		APP_ERROR_CHECK(err_code);
 	}
 
