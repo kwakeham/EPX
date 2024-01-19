@@ -166,7 +166,7 @@ void multi_buttons_init(multibtn_event_callback_t callback)
 	for (size_t i = 0; i < 4; i++)
 	{
 		btn_hold_count[i] = 0;
-		button_held_cnt[i] = 0;
+		button_pressed[i] = 0;
 	}
 	timer_run = false;
 
