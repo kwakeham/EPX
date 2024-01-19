@@ -65,11 +65,15 @@ void button_timeout_handler (void * p_context)
 		//If the button is pushed 
 		if (BTN_pushed[i])
 		{
-			run_long_timer = true;
+			run_long_timer = true; //if any button is pressed ensure to run the timer
 		} else
 		{
-			
+			btn_hold_count[i] = 0; //if the button is released, reset the count
 		}
+	}
+	if (!button_pressed[0] | !button_pressed[1] | !button_pressed[2] | !button_pressed[3] ) //if all buttons are not pressed...
+	{
+		multi_reset_buttons(); //reset everything, it'll overwrite button_pressed but that's fine, a wasted few clocks
 	}
 
 }
