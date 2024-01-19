@@ -23,7 +23,7 @@
 #include "app_util_platform.h"
 
 
-#define MULTI_PRESS_INTERVAL_MS        600UL
+#define MULTI_PRESS_INTERVAL_MS        500UL
 #define DEBOUNCE_TIME_MS        20UL
 
 //Buttons defined via SDK, to change
@@ -47,10 +47,8 @@ static multibtn_event_callback_t   m_registered_callback = &_default_callback;
 //static app_button_cfg_t  button_cfg;
 static uint8_t btn_hold_count[4] = {0,0,0,0};
 static bool button_pressed[4] = {0,0,0,0};
+static bool run_long_timer = false;
 
-
-
-static bool timer_run = false;
 static uint8_t is_button_init=0;
 
 APP_TIMER_DEF(m_button_timer);
@@ -67,7 +65,10 @@ void button_timeout_handler (void * p_context)
 		//If the button is pushed 
 		if (BTN_pushed[i])
 		{
-
+			run_long_timer = true;
+		} else
+		{
+			
 		}
 	}
 
@@ -80,7 +81,7 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 	if (button_action == APP_BUTTON_PUSH) {
 
 		// run timer to check it's status
-		timer_run = true;
+		run_long_timer = true;
 
 		// NRF_LOG_INFO("Button %d pushed !", pin_no);
 
@@ -163,23 +164,28 @@ void multi_buttons_init(multibtn_event_callback_t callback)
 	NRF_LOG_INFO("MULTI app button init");
 
 	// reset state variables
+	multi_reset_buttons();
+
+	//this is the timer for checking long presses
+    err_code = app_timer_create(&m_button_timer, APP_TIMER_MODE_REPEATED, button_timeout_handler);
+    APP_ERROR_CHECK(err_code);
+}
+
+void multi_reset_buttons(void) 
+{
 	for (size_t i = 0; i < 4; i++)
 	{
 		btn_hold_count[i] = 0;
 		button_pressed[i] = 0;
 	}
-	timer_run = false;
-
-	    //motor position timer, this is 10hz but really this will be 100 - 200 hz... or more likely 128 or 256, because 2^ maths
-    err_code = app_timer_create(&m_button_timer, APP_TIMER_MODE_REPEATED, button_timeout_handler);
-    APP_ERROR_CHECK(err_code);
+	run_long_timer = false;
 }
 
 void multi_buttons_tasks(void) {
 
-	if (timer_run) {
-		button_timeout_handler(NULL);
-	}
+	// if (run_long_timer) {
+	// 	button_timeout_handler(NULL);
+	// }
 }
 
 void multi_buttons_disable()

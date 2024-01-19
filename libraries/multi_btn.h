@@ -74,6 +74,14 @@ void button_callback(uint8_t pin_no, uint8_t button_action);
  */
 void multi_buttons_init(multibtn_event_callback_t callback);
 
+
+/**
+ * @brief resets the variables and timer that holds the state of the buttons
+ * 
+ */
+void multi_reset_buttons(void);
+
+
 /**
  *
  */
