@@ -45,30 +45,15 @@ static void _default_callback(multibtn_event_t evt) {}
 static multibtn_event_callback_t   m_registered_callback = &_default_callback;
 
 //static app_button_cfg_t  button_cfg;
-static uint8_t btn_press_count[4] = {0,0,0,0};
-static int16_t button_held_cnt[4] = {0,0,0,0};
-static bool long_press_active[4] = {0,0,0,0};
+static uint8_t btn_hold_count[4] = {0,0,0,0};
+static bool button_pressed[4] = {0,0,0,0};
 
 
-//Do I need this?
-// typedef struct {
-	// app_button_cfg_t  button_cfg[BUTTONS_NUMBER];
-	// uint8_t btn_CH1_press_count;
-	// uint8_t btn_CH2_press_count;
-	// uint8_t btn_CH3_press_count;
-	// uint8_t btn_CH4_press_count;
-	// bool long_press_active_CH1;
-	// bool long_press_active_CH2;
-	// bool long_press_active_CH3;
-	// bool long_press_active_CH4;
-	// int32_t cnt_CH1;
-	// int32_t cnt_CH2;
-	// int32_t cnt_CH3;
-	// int32_t cnt_CH4;
-// } sButtonPairDescr;
 
 static bool timer_run = false;
 static uint8_t is_button_init=0;
+
+APP_TIMER_DEF(m_button_timer);
 
 void button_timeout_handler (void * p_context)
 {
@@ -125,6 +110,7 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 			break;
 		}
 	}
+
 	if (button_action == APP_BUTTON_RELEASE)
 	{
 		switch (pin_no) {
@@ -153,6 +139,8 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 			break;
 		}
 	}
+
+
 }
 
 void multi_buttons_init(multibtn_event_callback_t callback)
@@ -177,11 +165,14 @@ void multi_buttons_init(multibtn_event_callback_t callback)
 	// reset state variables
 	for (size_t i = 0; i < 4; i++)
 	{
-		btn_press_count[i] = 0;
+		btn_hold_count[i] = 0;
 		button_held_cnt[i] = 0;
-		long_press_active[i] = 0;
 	}
 	timer_run = false;
+
+	    //motor position timer, this is 10hz but really this will be 100 - 200 hz... or more likely 128 or 256, because 2^ maths
+    err_code = app_timer_create(&m_button_timer, APP_TIMER_MODE_REPEATED, button_timeout_handler);
+    APP_ERROR_CHECK(err_code);
 }
 
 void multi_buttons_tasks(void) {
@@ -189,13 +180,6 @@ void multi_buttons_tasks(void) {
 	if (timer_run) {
 		button_timeout_handler(NULL);
 	}
-
-	// if (++repeat_counter >= MULTI_PRESS_INTERVAL_MS / BUTTON_STATE_POLL_INTERVAL_MS &&
-	// 		repeat_run) {
-
-		// repeat_timeout_handler(NULL);
-
-	// }
 }
 
 void multi_buttons_disable()
