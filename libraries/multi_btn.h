@@ -89,7 +89,9 @@ void multi_reset_buttons(void);
 void multi_button_timer_run_check(void);
 
 /**
- *
+ * @brief This runs tasks for the buttons that should run not during an
+ * interrupt but form main after an interrupt usually based on flags
+ * 
  */
 void multi_buttons_tasks(void);
 
