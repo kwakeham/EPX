@@ -16,7 +16,7 @@
 #include "mpos.h"
 #include "PID_controller.h"
 
-#define NRF_LOG_MODULE_NAME dh
+#define NRF_LOG_MODULE_NAME datahandler
 #define NRF_LOG_LEVEL       3
 #define NRF_LOG_INFO_COLOR  0
 #include "nrf_log.h"
