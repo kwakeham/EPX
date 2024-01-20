@@ -12,18 +12,19 @@ I'm also not a huge fan of the direction Nordic is taking with their code for ne
 
 ## BLE UART commands
 
+| Ascii Command | Value 1 | Value 2 (if applicable) | Comment | Example |
+| :------- | :----: | :---: | :--- | :--- |
+| Computer | $1600 | 5 | ducks |
+| "f" |  |  | Force save the position |
+| "k" |  |  | Show gains |
+| "p" | _float_  |  | Set proporitional (P) gain | "p18.1" will set proporitional to 18.1 |
+| "i" | _float_  |  | Set integral (I) gain | "i9" will set integral to 9.0 |
+| "d" | _float_  |  | Set derivative (D) gain | "d32.7" will set proporitional to 32.7 |
+| "s" | _int_  |  | go to gear | "s5" goes to gear 5 directly from any gear|
+| "s" | "+" or "-"  |  | increment gear | "s+" while in gear 5 will go to gear 6|
+| "m" | "a" or "g"  |  | chose angle or gear mode | "ma" will switch to angle mode, while "mg" will go to gear mode|
+| "t" | _int_  |  | if in angle mode go to taget angle | "t500" will go to angle 500, which is 1 turn (360 degree) + 240 degrees|
 
-f		Force save of the position
-k		Show gains
-p		Set p gain (eg: p18.1 will set proporitional to 18.1)
-i		Set I gain
-d		Set d gain
-S	0 - 12	go to gear (eg: s5 goes to gear 5 directly)
-	+	increase gear (eg "s+")
-	-	decrease gear
-m	a	set angle mode (eg: "ma" gotes to angle mode, "mg" goes to gear mode)
-	g	set gear mode
-t	#	Target angle (for angle mode only! will got to angle of 0 - "a very large number")
 
 ## To DO
 - Add functional buttons, long and short press, need a flow tree for this
