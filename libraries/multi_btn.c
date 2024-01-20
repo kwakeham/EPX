@@ -138,25 +138,25 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 
 			case MULTI_BTN_PIN_CH1:
 				button_pressed[0] = false;
-				m_registered_callback(MULTI_BTN_EVENT_CH1_PUSH);
+				m_registered_callback(MULTI_BTN_EVENT_CH1_RELEASE);
 				NRF_LOG_DEBUG("CH1 Released");
 				break;
 
 			case MULTI_BTN_PIN_CH2:
 				button_pressed[1] = false;
-				m_registered_callback(MULTI_BTN_EVENT_CH2_PUSH);
+				m_registered_callback(MULTI_BTN_EVENT_CH2_RELEASE);
 				NRF_LOG_DEBUG("CH2 Released");
 				break;
 
 			case MULTI_BTN_PIN_CH3:
 				button_pressed[2] = false;
-				m_registered_callback(MULTI_BTN_EVENT_CH3_PUSH);
+				m_registered_callback(MULTI_BTN_EVENT_CH3_RELEASE);
 				NRF_LOG_DEBUG("CH3 Released");
 				break;
 
 			case MULTI_BTN_PIN_CH4:
 				button_pressed[3] = false;
-				m_registered_callback(MULTI_BTN_EVENT_CH4_PUSH);
+				m_registered_callback(MULTI_BTN_EVENT_CH4_RELEASE);
 				NRF_LOG_DEBUG("CH4 Released");
 				break;
 
