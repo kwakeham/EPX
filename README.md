@@ -14,7 +14,6 @@ I'm also not a huge fan of the direction Nordic is taking with their code for ne
 
 | Ascii Command | Value 1 | Value 2 (if applicable) | Comment | Example |
 | :------- | :----: | :---: | :--- | :--- |
-| Computer | $1600 | 5 | ducks |
 | "f" |  |  | Force save the position |
 | "k" |  |  | Show gains |
 | "p" | _float_  |  | Set proporitional (P) gain | "p18.1" will set proporitional to 18.1 |
@@ -24,7 +23,7 @@ I'm also not a huge fan of the direction Nordic is taking with their code for ne
 | "s" | "+" or "-"  |  | increment gear | "s+" while in gear 5 will go to gear 6|
 | "m" | "a" or "g"  |  | chose angle or gear mode | "ma" will switch to angle mode, while "mg" will go to gear mode|
 | "t" | _int_  |  | if in angle mode go to taget angle | "t500" will go to angle 500, which is 1 turn (360 degree) + 240 degrees|
-
+| "g" | _HEX_ Gear  | _int_ angle| sets the gear angle | "g51200" will set the gear position5 to angle 1200, while "ga1600" sets gear 10 (Hex a) to angle 1600 degrees|
 
 ## To DO
 - Add functional buttons, long and short press, need a flow tree for this
