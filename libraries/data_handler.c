@@ -75,7 +75,7 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 	case MULTI_BTN_EVENT_CH4_LONG:
 		break;
         
-	case MULTI_BTN_EVENT_CH4_PUSH:
+	case MULTI_BTN_EVENT_CH4_LONG:
 		break;
 
 	case MULTI_BTN_EVENT_CH1_RELEASE:
