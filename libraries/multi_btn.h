@@ -83,6 +83,12 @@ void multi_reset_buttons(void);
 
 
 /**
+ * @brief check if any button is pressed and ensure timer is running
+ * 
+ */
+void multi_button_timer_run_check(void);
+
+/**
  *
  */
 void multi_buttons_tasks(void);

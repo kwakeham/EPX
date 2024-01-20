@@ -24,6 +24,7 @@
 
 
 #define MULTI_PRESS_INTERVAL_MS        500UL
+#define LONGPRESS_TIMER_INTERVAL_MS        10UL //10ms makes it simple
 #define DEBOUNCE_TIME_MS        20UL
 
 //Buttons defined via SDK, to change
@@ -47,66 +48,70 @@ static multibtn_event_callback_t   m_registered_callback = &_default_callback;
 //static app_button_cfg_t  button_cfg;
 static uint8_t btn_hold_count[4] = {0,0,0,0};
 static bool button_pressed[4] = {0,0,0,0};
-static bool run_long_timer = false;
+static bool run_long_timer = false; //Should we run the timer for checking longs
 
 static uint8_t is_button_init=0;
 
 APP_TIMER_DEF(m_button_timer);
+bool m_button_timer_running = false;
+
 
 void button_timeout_handler (void * p_context)
 {
 	// uint32_t err_code;
-	bool BTN_pushed[4];
 
 	//Loop buttons and check if they are pushed
 	for (size_t i = 0; i < 4; i++)
 	{
-		BTN_pushed[i] = app_button_is_pushed(i);
+		button_pressed[i] = app_button_is_pushed(i);
 		//If the button is pushed 
-		if (BTN_pushed[i])
+		if (button_pressed[i])
 		{
 			run_long_timer = true; //if any button is pressed ensure to run the timer
+			btn_hold_count[i]++;
+			if(btn_hold_count[i]>(100))
+			{
+				btn_hold_count[i] -= 100;
+				NRF_LOG_INFO("LONG PRESS");
+			}
+
 		} else
 		{
 			btn_hold_count[i] = 0; //if the button is released, reset the count
 		}
 	}
-	if (!button_pressed[0] | !button_pressed[1] | !button_pressed[2] | !button_pressed[3] ) //if all buttons are not pressed...
-	{
-		multi_reset_buttons(); //reset everything, it'll overwrite button_pressed but that's fine, a wasted few clocks
-	}
-
+	multi_button_timer_run_check();
 }
 
 // called by the app_button only
 void button_callback(uint8_t pin_no, uint8_t button_action)
 {
-
 	if (button_action == APP_BUTTON_PUSH) {
 
 		// run timer to check it's status
 		run_long_timer = true;
-
-		// NRF_LOG_INFO("Button %d pushed !", pin_no);
-
 		switch (pin_no) {
 
 			case MULTI_BTN_PIN_CH1:
+				button_pressed[0] = true;
 				// m_registered_callback(MULTI_BTN_EVENT_CH1_PUSH);
 				NRF_LOG_INFO("CH1 Press");
 				break;
 
 			case MULTI_BTN_PIN_CH2:
+				button_pressed[1] = true;
 				// m_registered_callback(MULTI_BTN_EVENT_CH2_PUSH);
 				NRF_LOG_INFO("CH2 Press");
 				break;
 
 			case MULTI_BTN_PIN_CH3:
+				button_pressed[2] = true;
 				// m_registered_callback(MULTI_BTN_EVENT_CH3_PUSH);
 				NRF_LOG_INFO("CH3 Press");
 				break;
 
 			case MULTI_BTN_PIN_CH4:
+				button_pressed[3] = true;
 				// m_registered_callback(MULTI_BTN_EVENT_CH4_PUSH);
 				NRF_LOG_INFO("CH4 Press");
 				break;
@@ -121,21 +126,25 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 		switch (pin_no) {
 
 			case MULTI_BTN_PIN_CH1:
+				button_pressed[0] = false;
 				// m_registered_callback(MULTI_BTN_EVENT_CH1_PUSH);
 				NRF_LOG_INFO("CH1 Released");
 				break;
 
 			case MULTI_BTN_PIN_CH2:
+				button_pressed[1] = false;
 				// m_registered_callback(MULTI_BTN_EVENT_CH2_PUSH);
 				NRF_LOG_INFO("CH2 Released");
 				break;
 
 			case MULTI_BTN_PIN_CH3:
+				button_pressed[2] = false;
 				// m_registered_callback(MULTI_BTN_EVENT_CH3_PUSH);
 				NRF_LOG_INFO("CH3 Released");
 				break;
 
 			case MULTI_BTN_PIN_CH4:
+				button_pressed[3] = false;
 				// m_registered_callback(MULTI_BTN_EVENT_CH4_PUSH);
 				NRF_LOG_INFO("CH4 Released");
 				break;
@@ -144,7 +153,7 @@ void button_callback(uint8_t pin_no, uint8_t button_action)
 			break;
 		}
 	}
-
+	multi_button_timer_run_check();
 
 }
 
@@ -182,7 +191,29 @@ void multi_reset_buttons(void)
 		btn_hold_count[i] = 0;
 		button_pressed[i] = 0;
 	}
-	run_long_timer = false;
+	run_long_timer = false; //clear flag
+	app_timer_stop(m_button_timer); 
+	m_button_timer_running = false;
+}
+
+void multi_button_timer_run_check(void)
+{
+	ret_code_t err_code;
+	if(!button_pressed[0] && !button_pressed[1] && !button_pressed[2] && !button_pressed[3])//if all buttons are not pressed...
+	{
+		NRF_LOG_INFO("no buttons multi_reset_buttons()");
+		multi_reset_buttons(); //reset everything, it'll overwrite button_pressed but that's fine, a wasted few clocks
+	} else
+	{
+		if (!m_button_timer_running) //if the timer isn't runnings
+		{	
+			NRF_LOG_INFO("timerrun");
+			m_button_timer_running = true;
+			err_code = app_timer_start(m_button_timer, APP_TIMER_TICKS(LONGPRESS_TIMER_INTERVAL_MS), NULL); //This starts timer to check if Long press is active
+			APP_ERROR_CHECK(err_code);
+			
+		}
+	}
 }
 
 void multi_buttons_tasks(void) {
@@ -195,7 +226,6 @@ void multi_buttons_tasks(void) {
 void multi_buttons_disable()
 {
 	uint32_t err_code;
-
 	err_code = app_button_disable();
 	APP_ERROR_CHECK(err_code);
 	NRF_LOG_INFO("MULTI buttons disable");
