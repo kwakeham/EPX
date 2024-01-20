@@ -141,7 +141,8 @@ int main(void)
 
     // lis2dtw_start(); //this isn't installed yet
 
-    multi_buttons_init(NULL);
+    multi_buttons_init(&data_handler_button_event_handler);
+    // di2_buttons_init(&_di2btn_event_callback_f);
 
     app_timer_init();
 
