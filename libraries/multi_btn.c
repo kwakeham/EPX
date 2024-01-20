@@ -23,8 +23,9 @@
 #include "app_util_platform.h"
 
 
-#define MULTI_PRESS_INTERVAL_MS        500UL
+#define LONGPRESS_INTERVAL_MS        500UL
 #define LONGPRESS_TIMER_INTERVAL_MS        10UL //10ms makes it simple
+#define LONGPRESS_TICKS LONGPRESS_INTERVAL_MS/LONGPRESS_TIMER_INTERVAL_MS
 #define DEBOUNCE_TIME_MS        20UL
 
 //Buttons defined via SDK, to change
@@ -69,10 +70,10 @@ void button_timeout_handler (void * p_context)
 		{
 			run_long_timer = true; //if any button is pressed ensure to run the timer
 			btn_hold_count[i]++;
-			if(btn_hold_count[i]>(100))
+			if(btn_hold_count[i]>(LONGPRESS_TICKS))
 			{
-				btn_hold_count[i] -= 100;
-				NRF_LOG_INFO("LONG PRESS");
+				btn_hold_count[i] -= LONGPRESS_TICKS;
+				NRF_LOG_INFO("LONG PRESS CH%d",(i+1));
 			}
 
 		} else
@@ -175,6 +176,7 @@ void multi_buttons_init(multibtn_event_callback_t callback)
 	APP_ERROR_CHECK(err_code);
 
 	NRF_LOG_INFO("MULTI app button init");
+	NRF_LOG_INFO("%d", APP_TIMER_TICKS(LONGPRESS_TIMER_INTERVAL_MS));
 
 	// reset state variables
 	multi_reset_buttons();
