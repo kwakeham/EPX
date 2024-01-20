@@ -6,12 +6,13 @@
  *
  */
 
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
 
 #ifndef __DATAHANDLER_H__
 #define __DATAHANDLER_H__
 
+#include "multi_btn.h"
+
+void data_handler_button_event_handler(multibtn_event_t evt);
 
 void data_handler_command(const char* p_chars, uint32_t length);
 

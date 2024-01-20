@@ -16,6 +16,14 @@
 #include "mpos.h"
 #include "PID_controller.h"
 
+#define NRF_LOG_MODULE_NAME dh
+#define NRF_LOG_LEVEL       3
+#define NRF_LOG_INFO_COLOR  0
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+NRF_LOG_MODULE_REGISTER();
+
+
 #define CHAR_LENGTH 10
 #define DATAOUTENABLE
 
@@ -34,6 +42,44 @@ bool update_flash = false; //Update the falsh memory from the main loop
 bool shift_mode = true; //if true then we are in a gear mode, if false we're in an angle mode 
 
 uint32_t dh_debug_counter = 0;
+
+void data_handler_button_event_handler(multibtn_event_t evt)
+{
+    NRF_LOG_INFO("button_event_handler %d", evt);
+	switch (evt)
+	{
+	case MULTI_BTN_EVENT_NOTHING:
+		break;
+
+	case MULTI_BTN_EVENT_CH1_PUSH:
+		break;
+
+	case MULTI_BTN_EVENT_CH2_PUSH:
+		break;
+
+	case MULTI_BTN_EVENT_CH3_PUSH:
+		break;
+
+	case MULTI_BTN_EVENT_CH4_PUSH:
+		break;
+
+	case MULTI_BTN_EVENT_CH1_LONG:
+		break;
+
+	case MULTI_BTN_EVENT_CH2_LONG:
+		break;
+
+	case MULTI_BTN_EVENT_CH3_LONG:
+		break;
+
+	case MULTI_BTN_EVENT_CH4_LONG:
+		break;
+
+	default:
+		break;
+	}
+
+}
 
 void data_handler_command(const char* p_chars, uint32_t length)
 {
