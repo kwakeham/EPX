@@ -10,13 +10,18 @@
  */
 
 #include "mpos.h"
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
 #include "boards.h"
 #include "app_timer.h"
 #include "nrf_delay.h"
 #include "drv8874.h"
 #include "PID_controller.h"
+
+#define NRF_LOG_MODULE_NAME mpos
+#define NRF_LOG_LEVEL       3
+#define NRF_LOG_INFO_COLOR  0
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+NRF_LOG_MODULE_REGISTER();
 
 uint32_t mpos_debug_counter = 0;
 
@@ -269,7 +274,7 @@ void mpos_display_value(void)
         mpos_debug_counter++;
         if (mpos_debug_counter %256 == 0)
         {
-            NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], drive, NRF_LOG_FLOAT(current_angle));
+            NRF_LOG_DEBUG("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], drive, NRF_LOG_FLOAT(current_angle));
         }
         // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
 
