@@ -31,7 +31,7 @@
 NRF_LOG_MODULE_REGISTER();
 
 //Button intervals
-#define LONGPRESS_INTERVAL_MS        200UL
+#define LONGPRESS_INTERVAL_MS        200UL //This might need to be variable for configuration
 #define LONGPRESS_TIMER_INTERVAL_MS        10UL //10ms makes it simple
 #define LONGPRESS_TICKS LONGPRESS_INTERVAL_MS/LONGPRESS_TIMER_INTERVAL_MS
 #define DEBOUNCE_TIME_MS        20UL
