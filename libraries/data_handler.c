@@ -202,24 +202,6 @@ void data_handler_force_save(char command)
     NRF_LOG_INFO("Force save");
 }
 
-// void data_handler_gear_shift_increment(int shift_count)
-// {
-
-//     //guards
-//     // if(epx_values.current_gear > epx_values.num_gears-1)
-//     // {
-//     //     epx_values.current_gear = epx_values.num_gears-1;
-//     // }
-
-//     // if(epx_values.current_gear < 0)
-//     // {
-//     //     epx_values.current_gear = 0;
-//     // }
-
-//     // NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear, epx_values.gear_pos[(epx_values.current_gear)]);
-//     // mpos_update_angle((float)epx_values.gear_pos[(epx_values.current_gear)]);
-// }
-
 void data_handler_shift_gear_handler(bool command, int shift_count)
 {
     if (command) //if there is a command then process and decode
