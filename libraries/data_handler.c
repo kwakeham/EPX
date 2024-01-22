@@ -52,9 +52,11 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 		break;
 
 	case MULTI_BTN_EVENT_CH1_PUSH:
+        data_handler_gear_shift_increment(-1);
 		break;
 
 	case MULTI_BTN_EVENT_CH2_PUSH:
+        data_handler_gear_shift_increment(1);
 		break;
 
 	case MULTI_BTN_EVENT_CH3_PUSH:
@@ -64,9 +66,11 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 		break;
 
 	case MULTI_BTN_EVENT_CH1_LONG:
+        data_handler_gear_shift_increment(-1);
 		break;
 
 	case MULTI_BTN_EVENT_CH2_LONG:
+        data_handler_gear_shift_increment(1);
 		break;
 
 	case MULTI_BTN_EVENT_CH3_LONG:
@@ -153,7 +157,7 @@ void data_handler_command_processor(void)
         NRF_LOG_INFO("little s");
         if (shift_mode)
         {
-            data_handler_shift_geat_handler();
+            data_handler_shift_gear_handler();
         }
         break;
 
@@ -198,20 +202,9 @@ void data_handler_force_save(char command)
     NRF_LOG_INFO("Force save");
 }
 
-void data_handler_shift_geat_handler(void)
+void data_handler_gear_shift_increment(int shift_count)
 {
-    switch (command_message[1])
-    {
-    case 0x2B: //+
-        epx_values.current_gear++;
-        break;
-    case 0x2D: //-
-        epx_values.current_gear--;
-        break;
-    default:
-        epx_values.current_gear = data_handler_command_number_return(1);
-        break;
-    }
+    epx_values.current_gear += shift_count;
 
     //guards
     if(epx_values.current_gear > epx_values.num_gears-1)
@@ -226,6 +219,40 @@ void data_handler_shift_geat_handler(void)
 
     NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear, epx_values.gear_pos[(epx_values.current_gear)]);
     mpos_update_angle((float)epx_values.gear_pos[(epx_values.current_gear)]);
+}
+
+void data_handler_shift_gear_handler(void)
+{
+    switch (command_message[1])
+    {
+    case 0x2B: //+
+        // epx_values.current_gear++;
+        data_handler_gear_shift_increment(1);
+        break;
+    case 0x2D: //-
+        // epx_values.current_gear--;
+        data_handler_gear_shift_increment(-1);
+        break;
+    default:
+        epx_values.current_gear = data_handler_command_number_return(1);
+        NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear, epx_values.gear_pos[(epx_values.current_gear)]);
+        mpos_update_angle((float)epx_values.gear_pos[(epx_values.current_gear)]);
+        break;
+    }
+
+    // //guards
+    // if(epx_values.current_gear > epx_values.num_gears-1)
+    // {
+    //     epx_values.current_gear = epx_values.num_gears-1;
+    // }
+
+    // if(epx_values.current_gear < 0)
+    // {
+    //     epx_values.current_gear = 0;
+    // }
+
+    // NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear, epx_values.gear_pos[(epx_values.current_gear)]);
+    // mpos_update_angle((float)epx_values.gear_pos[(epx_values.current_gear)]);
 
 }
 
