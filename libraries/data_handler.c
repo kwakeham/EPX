@@ -239,21 +239,6 @@ void data_handler_shift_gear_handler(void)
         mpos_update_angle((float)epx_values.gear_pos[(epx_values.current_gear)]);
         break;
     }
-
-    // //guards
-    // if(epx_values.current_gear > epx_values.num_gears-1)
-    // {
-    //     epx_values.current_gear = epx_values.num_gears-1;
-    // }
-
-    // if(epx_values.current_gear < 0)
-    // {
-    //     epx_values.current_gear = 0;
-    // }
-
-    // NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear, epx_values.gear_pos[(epx_values.current_gear)]);
-    // mpos_update_angle((float)epx_values.gear_pos[(epx_values.current_gear)]);
-
 }
 
 void data_handler_shift_mode_handler(void)
