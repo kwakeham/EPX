@@ -31,7 +31,7 @@ typedef struct
     //current information for sleep restore data
     int32_t current_rotations;
     int32_t current_angle;
-    uint8_t current_gear;
+    int8_t current_gear;
 
     //Historic data
     uint32_t upshifts;
@@ -50,7 +50,7 @@ typedef struct
     //current information for sleep restore data
     int32_t current_rotations;
     int32_t current_angle;
-    uint8_t current_gear;
+    int8_t current_gear;
 
     //Historic data
     uint32_t upshifts;
