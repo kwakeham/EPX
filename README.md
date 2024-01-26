@@ -24,6 +24,7 @@ I'm also not a huge fan of the direction Nordic is taking with their code for ne
 | "m" | "a" or "g"  |  | chose angle or gear mode | "ma" will switch to angle mode, while "mg" will go to gear mode|
 | "t" | _int_  |  | if in angle mode go to taget angle | "t500" will go to angle 500, which is 1 turn (360 degree) + 240 degrees|
 | "g" | _HEX_ Gear  | _int_ angle| sets the gear angle | "g51200" will set the gear position5 to angle 1200, while "ga1600" sets gear 10 (Hex a) to angle 1600 degrees|
+| "g" | "f"  | _int_ num_of_gears | sets the num of sprockets | "gf12" will set the number of gear positions to 12, max 13 currently|
 
 ## To DO
 - Add functional buttons, long and short press, need a flow tree for this
