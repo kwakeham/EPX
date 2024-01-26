@@ -31,7 +31,7 @@ static char command_message[10] = {};
 
 bool data_process_command = false;
 
-epx_configuration_t epx_values;
+epx_configuration_t epx_configuration;
 epx_position_configuration_t epx_positions;
 
 //nus buffers
@@ -135,21 +135,21 @@ void data_handler_command_processor(void)
 
     case 0x70: //p Set Kp
         NRF_LOG_INFO("little P");
-        epx_values.Kp =  data_handler_command_float_return(1);
+        epx_configuration.Kp =  data_handler_command_float_return(1);
         pid_update_gains();
         data_handler_show_gains();
         break;
 
     case 0x69: //i set Ki
         NRF_LOG_INFO("little i");
-        epx_values.Ki =  data_handler_command_float_return(1);
+        epx_configuration.Ki =  data_handler_command_float_return(1);
         pid_update_gains();
         data_handler_show_gains();
         break;
 
     case 0x64: //d Set Kd
         NRF_LOG_INFO("little d");
-        epx_values.Kd =  data_handler_command_float_return(1);
+        epx_configuration.Kd =  data_handler_command_float_return(1);
         pid_update_gains();
         data_handler_show_gains();
         break;
@@ -227,9 +227,9 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
 
 
     //guards to ensure it stays within number of gears
-    if(epx_positions.current_gear > epx_values.num_gears-1)
+    if(epx_positions.current_gear > epx_configuration.num_gears-1)
     {
-        epx_positions.current_gear = epx_values.num_gears-1;
+        epx_positions.current_gear = epx_configuration.num_gears-1;
     }
 
     if(epx_positions.current_gear < 0)
@@ -237,8 +237,8 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
         epx_positions.current_gear = 0;
     }
 
-    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_positions.current_gear, epx_values.gear_pos[(epx_positions.current_gear)]);
-    mpos_update_angle((float)epx_values.gear_pos[(epx_positions.current_gear)]);
+    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_positions.current_gear, epx_configuration.gear_pos[(epx_positions.current_gear)]);
+    mpos_update_angle((float)epx_configuration.gear_pos[(epx_positions.current_gear)]);
 }
 
 void data_handler_shift_mode_handler(void)
@@ -270,57 +270,57 @@ void data_handler_command_gear_value(void)
     switch (command_message[1])
     {
     case 0x31: //1
-        epx_values.gear_pos[0] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[0] = data_handler_command_number_return(2);
         break;
     case 0x32: //2
-        epx_values.gear_pos[1] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[1] = data_handler_command_number_return(2);
         break;
     case 0x33: //3
-        epx_values.gear_pos[2] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[2] = data_handler_command_number_return(2);
         break;
     case 0x34: //4
-        epx_values.gear_pos[3] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[3] = data_handler_command_number_return(2);
         break;
     case 0x35: //5
-        epx_values.gear_pos[4] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[4] = data_handler_command_number_return(2);
         break;
     case 0x36: //6
-        epx_values.gear_pos[5] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[5] = data_handler_command_number_return(2);
         break;
     case 0x37: //7
-        epx_values.gear_pos[6] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[6] = data_handler_command_number_return(2);
         break;
     case 0x38: //8
-        epx_values.gear_pos[7] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[7] = data_handler_command_number_return(2);
         break;
     case 0x39: //9
-        epx_values.gear_pos[8] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[8] = data_handler_command_number_return(2);
         break;
     case 0x61: //10 - a
-        epx_values.gear_pos[9] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[9] = data_handler_command_number_return(2);
         break;
     case 0x62: //11 - b
-        epx_values.gear_pos[10] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[10] = data_handler_command_number_return(2);
         break;
     case 0x63: //12 - c
-        epx_values.gear_pos[11] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[11] = data_handler_command_number_return(2);
         break;
     case 0x64: //13 - d
-        epx_values.gear_pos[12] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[12] = data_handler_command_number_return(2);
         break;
     case 0x65: //14 - e
-        epx_values.gear_pos[12] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[12] = data_handler_command_number_return(2);
         break;
     case 0x66: //f
-        epx_values.num_gears = data_handler_command_number_return(2);
-        NRF_LOG_INFO(" %d" , epx_values.num_gears);
+        epx_configuration.num_gears = data_handler_command_number_return(2);
+        NRF_LOG_INFO(" %d" , epx_configuration.num_gears);
         break;
     default:
         update_flash = false; //if it wasn't the other cases, don't update the flash memory
         break;
     }
-    sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear_pos[0], epx_values.gear_pos[1], epx_values.gear_pos[2], epx_values.gear_pos[3], epx_values.gear_pos[4], epx_values.gear_pos[5]);
-    sprintf(buff2, "Gear 7: %ld, %ld, %ld, %ld, %ld, %ld",epx_values.gear_pos[6], epx_values.gear_pos[7], epx_values.gear_pos[8], epx_values.gear_pos[9], epx_values.gear_pos[10], epx_values.gear_pos[11]);
+    sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld, %ld",epx_configuration.gear_pos[0], epx_configuration.gear_pos[1], epx_configuration.gear_pos[2], epx_configuration.gear_pos[3], epx_configuration.gear_pos[4], epx_configuration.gear_pos[5]);
+    sprintf(buff2, "Gear 7: %ld, %ld, %ld, %ld, %ld, %ld",epx_configuration.gear_pos[6], epx_configuration.gear_pos[7], epx_configuration.gear_pos[8], epx_configuration.gear_pos[9], epx_configuration.gear_pos[10], epx_configuration.gear_pos[11]);
 
     NRF_LOG_INFO(" %s %d" , buff1);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
@@ -329,7 +329,7 @@ void data_handler_command_gear_value(void)
 
 void data_handler_show_gains(void)
 {
-    sprintf(buff1, "Gains: Kp: %.3f, Ki: %.3f, Kd: %.3f",epx_values.Kp, epx_values.Ki, epx_values.Kd);
+    sprintf(buff1, "Gains: Kp: %.3f, Ki: %.3f, Kd: %.3f",epx_configuration.Kp, epx_configuration.Ki, epx_configuration.Kd);
     NRF_LOG_INFO(" %s " , buff1);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
 }
@@ -347,13 +347,13 @@ void data_handler_sch_execute(void)
     if(update_flash)
     {
         update_flash = false;
-        mem_epx_update(epx_values);
+        mem_epx_update(epx_configuration);
     }
 
 }
 
 void data_handler_get_flash_values(void)
 {
-    epx_values = tm_fds_epx_config();
-    link_memory(&epx_values);
+    epx_configuration = tm_fds_epx_config();
+    link_memory(&epx_configuration);
 }
