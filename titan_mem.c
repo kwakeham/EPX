@@ -101,7 +101,7 @@ static epx_configuration_t m_epx_cfg =
     .cos_max = 0,
 };
 
-static epx_position_configuration_t m_epx_sleep_cfg =
+static epx_position_configuration_t m_epx_position_cfg =
 {
     .current_rotations = 0,
     .current_angle = 0,
@@ -122,13 +122,13 @@ static fds_record_t const m_epx_record =
 };
 
 /* A record containing configuration data. */
-static fds_record_t const m_epx_sleep_record =
+static fds_record_t const m_epx_position_record =
 {
     .file_id           = FILE_ID_SLEEP,
     .key               = RECORD_KEY_SLEEP_1,
-    .data.p_data       = &m_epx_sleep_cfg,
+    .data.p_data       = &m_epx_position_cfg,
     /* The length of a record is always expressed in 4-byte units (words). */
-    .data.length_words = (sizeof(m_epx_sleep_cfg)+3) / sizeof(uint32_t), //+3 for rounding
+    .data.length_words = (sizeof(m_epx_position_cfg)+3) / sizeof(uint32_t), //+3 for rounding
 };
 
 
@@ -336,7 +336,7 @@ void tm_fds_config_init()
         APP_ERROR_CHECK(rc);
 
         /* Copy the configuration from flash into m_epx_cfg. */
-        memcpy(&m_epx_sleep_cfg, config.p_data, sizeof(epx_position_configuration_t));
+        memcpy(&m_epx_position_cfg, config.p_data, sizeof(epx_position_configuration_t));
 
         /* Close the record when done reading. */
         rc = fds_record_close(&desc);
@@ -347,7 +347,7 @@ void tm_fds_config_init()
         /* System config not found; write a new one. */
         NRF_LOG_INFO("Writing sleep file...");
 
-        rc = fds_record_write(&desc, &m_epx_sleep_record);
+        rc = fds_record_write(&desc, &m_epx_position_record);
         APP_ERROR_CHECK(rc);
     }
 }
@@ -404,6 +404,35 @@ void tm_fds_config_update()
     }
 }
 
+void tm_fds_position_update()
+{
+    ret_code_t rc;
+    fds_record_desc_t desc = {0};
+    fds_find_token_t  tok  = {0};
+
+    tm_fds_gc(); //run garbage collection
+
+    rc = fds_record_find(FILE_ID_SLEEP, RECORD_KEY_SLEEP_1, &desc, &tok);
+
+    if (rc == NRF_SUCCESS)
+    {
+        //debug info
+        // char tm_debug_message[20];
+        // sprintf(tm_debug_message,"%ld, %.5f \n",m_epx_cfg.zero, m_epx_cfg.calibration);
+        // NRF_LOG_INFO("%s",tm_debug_message);
+
+        rc = fds_record_update(&desc, &m_epx_position_record);
+        APP_ERROR_CHECK(rc);
+    }
+    else
+    {
+        /* System config not found; write a new one. */
+        NRF_LOG_INFO("Writing position file...");
+        rc = fds_record_write(&desc, &m_epx_position_record);
+        APP_ERROR_CHECK(rc);
+    }
+}
+
 
 void storage_init()
 {
@@ -449,4 +478,10 @@ void mem_epx_update(epx_configuration_t config_towrite)
 {
     m_epx_cfg = config_towrite;
     tm_fds_config_update();
+}
+
+void mem_epx_position_update(epx_position_configuration_t position_config_towrite)
+{
+    m_epx_position_cfg = position_config_towrite;
+    tm_fds_position_update();
 }

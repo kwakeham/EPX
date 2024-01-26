@@ -84,14 +84,26 @@ void tm_fds_config_init();
 
 void tm_fds_config_update();
 
+void tm_fds_position_update();
+
 /**
  * @brief This will trigger a new Flash memory write of the epx_configuration file
  * 
- * This updates the titan_mem variables, kept seperate from other variables, and requests a write from tm_fds_config_update
+ * This updates the titan_mem variables, kept seperate from the position variables, and requests a write from tm_fds_config_update
  * which is what will actually do the update
  * 
  * @param config_towrite 
  */
 void mem_epx_update(epx_configuration_t config_towrite);
+
+/**
+ * @brief This will trigger a new Flash memory write of the epx_position_configuration_t file
+ * 
+ * This updates the titan_mem positions, kept seperate from the configuration variables, and requests a write from tm_fds_position_update
+ * which is what will actually do the update
+ * 
+ * @param config_towrite 
+ */
+void mem_epx_position_update(epx_position_configuration_t position_config_towrite);
 
 #endif
