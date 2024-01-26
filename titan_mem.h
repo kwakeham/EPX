@@ -58,7 +58,9 @@ typedef struct
 
 } epx_position_configuration_t;
 
-epx_configuration_t tm_fds_epx_config ();
+epx_configuration_t tm_fds_epx_config();
+
+epx_position_configuration_t tm_fds_epx_position();
 
 void tm_fds_init();
 

@@ -242,6 +242,11 @@ epx_configuration_t tm_fds_epx_config (void)
     return m_epx_cfg;
 }
 
+epx_position_configuration_t tm_fds_epx_position (void)
+{
+    return m_epx_position_cfg;
+}
+
 void tm_fds_test_retrieve()
 {
     // ret_code_t rc;
