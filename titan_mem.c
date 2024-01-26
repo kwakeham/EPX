@@ -88,12 +88,12 @@ static epx_configuration_t m_epx_cfg =
     .Ki = 0.0f,
     .Kd = 0.0f,
 
-    .current_rotations = 0,
-    .current_angle = 0,
-    .current_gear = 0,
+    // .current_rotations = 0,
+    // .current_angle = 0,
+    // .current_gear = 0,
 
-    .upshifts = 0,
-    .downshifts = 0,
+    // .upshifts = 0,
+    // .downshifts = 0,
 
     .sin_min = 0,
     .sin_max = 0,
@@ -101,7 +101,7 @@ static epx_configuration_t m_epx_cfg =
     .cos_max = 0,
 };
 
-static epx_sleep_configuration_t m_epx_sleep_cfg =
+static epx_position_configuration_t m_epx_sleep_cfg =
 {
     .current_rotations = 0,
     .current_angle = 0,
@@ -336,7 +336,7 @@ void tm_fds_config_init()
         APP_ERROR_CHECK(rc);
 
         /* Copy the configuration from flash into m_epx_cfg. */
-        memcpy(&m_epx_sleep_cfg, config.p_data, sizeof(epx_sleep_configuration_t));
+        memcpy(&m_epx_sleep_cfg, config.p_data, sizeof(epx_position_configuration_t));
 
         /* Close the record when done reading. */
         rc = fds_record_close(&desc);

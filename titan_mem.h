@@ -28,14 +28,14 @@ typedef struct
     float Ki;
     float Kd;
 
-    //current information for sleep restore data
-    int32_t current_rotations;
-    int32_t current_angle;
-    int8_t current_gear;
+    // //current information for sleep restore data
+    // int32_t current_rotations;
+    // int32_t current_angle;
+    // int8_t current_gear;
 
-    //Historic data
-    uint32_t upshifts;
-    uint32_t downshifts;
+    // //Historic data
+    // uint32_t upshifts;
+    // uint32_t downshifts;
 
     int16_t sin_min; //averages can be calculated from this
     int16_t sin_max;
@@ -56,7 +56,7 @@ typedef struct
     uint32_t upshifts;
     uint32_t downshifts;
 
-} epx_sleep_configuration_t;
+} epx_position_configuration_t;
 
 epx_configuration_t tm_fds_epx_config ();
 

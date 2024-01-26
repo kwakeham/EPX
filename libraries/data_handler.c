@@ -32,6 +32,7 @@ static char command_message[10] = {};
 bool data_process_command = false;
 
 epx_configuration_t epx_values;
+epx_position_configuration_t epx_positions;
 
 //nus buffers
 char buff1[50];
@@ -209,35 +210,35 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
         switch (command_message[1])
         {
         case 0x2B: //+
-            epx_values.current_gear++;
+            epx_positions.current_gear++;
             break;
         case 0x2D: //-
-            epx_values.current_gear--;
+            epx_positions.current_gear--;
             break;
         default:
-            epx_values.current_gear = data_handler_command_number_return(1);
+            epx_positions.current_gear = data_handler_command_number_return(1);
             break;
         }
     } else //no command then process the shift count
     {
-         epx_values.current_gear += shift_count;
+         epx_positions.current_gear += shift_count;
     }
     
 
 
     //guards to ensure it stays within number of gears
-    if(epx_values.current_gear > epx_values.num_gears-1)
+    if(epx_positions.current_gear > epx_values.num_gears-1)
     {
-        epx_values.current_gear = epx_values.num_gears-1;
+        epx_positions.current_gear = epx_values.num_gears-1;
     }
 
-    if(epx_values.current_gear < 0)
+    if(epx_positions.current_gear < 0)
     {
-        epx_values.current_gear = 0;
+        epx_positions.current_gear = 0;
     }
 
-    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_values.current_gear, epx_values.gear_pos[(epx_values.current_gear)]);
-    mpos_update_angle((float)epx_values.gear_pos[(epx_values.current_gear)]);
+    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_positions.current_gear, epx_values.gear_pos[(epx_positions.current_gear)]);
+    mpos_update_angle((float)epx_values.gear_pos[(epx_positions.current_gear)]);
 }
 
 void data_handler_shift_mode_handler(void)
