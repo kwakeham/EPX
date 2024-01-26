@@ -84,8 +84,18 @@ void tm_fds_gc();
  */
 void tm_fds_config_init();
 
+/**
+ * @brief Force a update to the config file on flash
+ * run garbage collection, check if the record exists, write it
+ * 
+ */
 void tm_fds_config_update();
 
+/**
+ * @brief Force a update to the position file on flash
+ * run garbage collection, check if the record exists, write it
+ * 
+ */
 void tm_fds_position_update();
 
 /**

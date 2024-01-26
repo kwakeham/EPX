@@ -201,8 +201,6 @@ static void wait_for_fds_ready(void)
     }
 }
 
-
-
 void tm_fds_init()
 {
     ret_code_t ret = fds_register(tm_fds_evt_handler);
