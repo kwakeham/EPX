@@ -235,6 +235,9 @@ epx_configuration_t tm_fds_epx_config (void)
 
 epx_position_configuration_t tm_fds_epx_position (void)
 {
+    NRF_LOG_INFO("current_rotations: %d", m_epx_position_cfg.current_rotations);
+    NRF_LOG_INFO("current_angle: %d", m_epx_position_cfg.current_angle);
+    NRF_LOG_INFO("current_gear: %d", m_epx_position_cfg.current_gear);
     return m_epx_position_cfg;
 }
 
@@ -416,9 +419,17 @@ void tm_fds_position_update()
         // char tm_debug_message[20];
         // sprintf(tm_debug_message,"%ld, %.5f \n",m_epx_cfg.zero, m_epx_cfg.calibration);
         // NRF_LOG_INFO("%s",tm_debug_message);
+        NRF_LOG_INFO("Updating position");
 
         rc = fds_record_update(&desc, &m_epx_position_record);
         APP_ERROR_CHECK(rc);
+        if (rc == NRF_SUCCESS)
+        {
+            NRF_LOG_INFO("SUCCESS Updated position");
+        } else
+        {
+            NRF_LOG_INFO("FAIL position not saved");
+        }
     }
     else
     {
