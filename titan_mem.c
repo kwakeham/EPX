@@ -470,7 +470,7 @@ static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt)
     }
 }
 
-void mem_epx_update(epx_configuration_t config_towrite)
+void mem_epx_config_update(epx_configuration_t config_towrite)
 {
     m_epx_cfg = config_towrite;
     tm_fds_config_update();

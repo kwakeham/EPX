@@ -97,7 +97,7 @@ void tm_fds_position_update();
  * 
  * @param config_towrite 
  */
-void mem_epx_update(epx_configuration_t config_towrite);
+void mem_epx_config_update(epx_configuration_t config_towrite);
 
 /**
  * @brief This will trigger a new Flash memory write of the epx_position_configuration_t file

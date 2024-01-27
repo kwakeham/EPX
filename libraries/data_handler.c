@@ -344,7 +344,7 @@ void data_handler_sch_execute(void)
     if(update_flash)
     {
         update_flash = false;
-        mem_epx_update(epx_configuration);
+        mem_epx_config_update(epx_configuration);
     }
 
 }
