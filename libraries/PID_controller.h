@@ -21,7 +21,7 @@
  */
 void pid_update_gains(void);
 
-void link_memory(epx_configuration_t *temp_link_epx_values);
+void pid_link_memory(epx_configuration_t *temp_link_epx_values);
 
 float pidController(float setpoint, float measuredValue);
 

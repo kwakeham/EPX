@@ -52,7 +52,7 @@ void pid_update_gains(void)
     Kd =link_epx_values->Kd;
 }
 
-void link_memory(epx_configuration_t *temp_link_epx_values)
+void pid_link_memory(epx_configuration_t *temp_link_epx_values)
 {
     link_epx_values = temp_link_epx_values;
 }

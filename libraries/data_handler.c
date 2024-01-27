@@ -39,7 +39,6 @@ char buff1[50];
 char buff2[50];
 
 bool update_flash = false; //Update the falsh memory from the main loop
-
 bool shift_mode = true; //if true then we are in a gear mode, if false we're in an angle mode 
 
 uint32_t dh_debug_counter = 0;
@@ -354,6 +353,9 @@ void data_handler_sch_execute(void)
 
 void data_handler_get_flash_values(void)
 {
-    epx_configuration = tm_fds_epx_config();
-    link_memory(&epx_configuration);
+    epx_configuration = tm_fds_epx_config(); //get configuration from titanmem
+    epx_positions = tm_fds_epx_position(); //get position data from titanmem
+    pid_link_memory(&epx_configuration); //link the local value to the PID so that the PID isn't carrying it's own values
 }
+
+
