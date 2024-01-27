@@ -17,6 +17,7 @@
 #include <inttypes.h>
 #include "nrfx_saadc.h"
 #include "app_error.h"
+#include "titan_mem.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,6 +70,13 @@ float angle(int16_t hall_0, int16_t hall_1);
 void mpos_update_angle(float target_angle);
 
 void mpos_display_value(void);
+
+/**
+ * @brief link memory so that the mpos will know motor information
+ * 
+ * @param temp_link_epx_values 
+ */
+void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values);
 
 #ifdef __cplusplus
 }

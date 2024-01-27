@@ -49,6 +49,7 @@ static nrf_saadc_value_t sin_avg;
 static nrf_saadc_value_t cos_avg;
 
 static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
+static epx_position_configuration_t *link_epx_pos = NULL;
 static double angle_old; // last angle to keep track of if we need to add or subtract an angle
 
 APP_TIMER_DEF(m_repeat_action);
@@ -210,13 +211,14 @@ float angle(int16_t hall_0, int16_t hall_1)
     {
         if ((angle_old- rotation_angle) > 180.0)
         {
-            // rotation_count=rotation_count+1;
+            link_epx_pos->current_rotations++;
             rotation_count++;
         }
     } else if (angle_old < rotation_angle)
     {
         if ((rotation_angle-angle_old) > 180.0)
         {
+            link_epx_pos->current_rotations--;
             rotation_count--;
         }
     }
@@ -242,6 +244,7 @@ void mpos_display_value(void)
         mpos_min_max(); // store min max for average offset
 
         current_angle += rotation_count*360;
+        current_angle += link_epx_pos->current_rotations*360;
 
         float drive = pidController(ble_angle,(float)current_angle);
 
@@ -265,6 +268,7 @@ void mpos_display_value(void)
                     shifting = false; // leave shift mode
                     drv8874_nsleep(0); //sleep the motor driver
                     sleep_count = 0 ; //reset the sleep count last
+                    //We not been adjusting the motor for a while so it's a good time to write epx_pos memory
                 }
             }
         }
@@ -283,4 +287,9 @@ void mpos_display_value(void)
 
     }
 
+}
+
+void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)
+{
+    link_epx_pos = temp_link_epx_values;
 }
