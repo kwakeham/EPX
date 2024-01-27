@@ -32,7 +32,7 @@ static char command_message[10] = {};
 bool data_process_command = false;
 
 epx_configuration_t epx_configuration;
-epx_position_configuration_t epx_positions;
+epx_position_configuration_t epx_position;
 
 //nus buffers
 char buff1[50];
@@ -209,33 +209,33 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
         switch (command_message[1])
         {
         case 0x2B: //+
-            epx_positions.current_gear++;
+            epx_position.current_gear++;
             break;
         case 0x2D: //-
-            epx_positions.current_gear--;
+            epx_position.current_gear--;
             break;
         default:
-            epx_positions.current_gear = data_handler_command_number_return(1);
+            epx_position.current_gear = data_handler_command_number_return(1);
             break;
         }
     } else //no command then process the shift count
     {
-         epx_positions.current_gear += shift_count;
+         epx_position.current_gear += shift_count;
     }
 
     //guards to ensure it stays within number of gears
-    if(epx_positions.current_gear > epx_configuration.num_gears-1)
+    if(epx_position.current_gear > epx_configuration.num_gears-1)
     {
-        epx_positions.current_gear = epx_configuration.num_gears-1;
+        epx_position.current_gear = epx_configuration.num_gears-1;
     }
 
-    if(epx_positions.current_gear < 0)
+    if(epx_position.current_gear < 0)
     {
-        epx_positions.current_gear = 0;
+        epx_position.current_gear = 0;
     }
 
-    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_positions.current_gear, epx_configuration.gear_pos[(epx_positions.current_gear)]);
-    mpos_update_angle((float)epx_configuration.gear_pos[(epx_positions.current_gear)]);
+    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_position.current_gear, epx_configuration.gear_pos[(epx_position.current_gear)]);
+    mpos_update_angle((float)epx_configuration.gear_pos[(epx_position.current_gear)]);
 }
 
 void data_handler_shift_mode_handler(void)
@@ -352,8 +352,9 @@ void data_handler_sch_execute(void)
 void data_handler_get_flash_values(void)
 {
     epx_configuration = tm_fds_epx_config(); //get configuration from titanmem
-    epx_positions = tm_fds_epx_position(); //get position data from titanmem
+    epx_position = tm_fds_epx_position(); //get position data from titanmem
     pid_link_memory(&epx_configuration); //link the local value to the PID so that the PID isn't carrying it's own values
+    mpos_link_memory(&epx_position);//link the local value to the mpos controller
 }
 
 
