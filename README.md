@@ -14,7 +14,7 @@ I'm also not a huge fan of the direction Nordic is taking with their code for ne
 
 | Ascii Command | Value 1 | Value 2 (if applicable) | Comment | Example |
 | :------- | :----: | :---: | :--- | :--- |
-| "f" |  |  | Force save the position |
+| "f" | S or s |  | Flash-Save safeguard to force save the position, maybe be future commands |
 | "k" |  |  | Show gains |
 | "p" | _float_  |  | Set proporitional (P) gain | "p18.1" will set proporitional to 18.1 |
 | "i" | _float_  |  | Set integral (I) gain | "i9" will set integral to 9.0 |
