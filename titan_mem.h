@@ -28,15 +28,6 @@ typedef struct
     float Ki;
     float Kd;
 
-    // //current information for sleep restore data
-    // int32_t current_rotations;
-    // int32_t current_angle;
-    // int8_t current_gear;
-
-    // //Historic data
-    // uint32_t upshifts;
-    // uint32_t downshifts;
-
     int16_t sin_min; //averages can be calculated from this
     int16_t sin_max;
     int16_t cos_min;
