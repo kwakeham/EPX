@@ -38,7 +38,8 @@ epx_position_configuration_t epx_position;
 char buff1[50];
 char buff2[50];
 
-bool update_flash = false; //Update the falsh memory from the main loop
+bool update_config_flash = false; //Update the falsh memory from the main loop
+
 bool shift_mode = true; //if true then we are in a gear mode, if false we're in an angle mode 
 
 uint32_t dh_debug_counter = 0;
@@ -197,7 +198,7 @@ void data_handler_force_save(char command)
 {
     if (command == 0x53 || command == 0x73)
     {
-        update_flash = true;
+        update_config_flash = true;
     }
     NRF_LOG_INFO("Force save");
 }
@@ -262,7 +263,7 @@ void data_handler_shift_mode_handler(void)
 
 void data_handler_command_gear_value(void)
 {
-    update_flash = true;
+    update_config_flash = true;
 
     switch (command_message[1])
     {
@@ -313,7 +314,7 @@ void data_handler_command_gear_value(void)
         NRF_LOG_INFO(" %d" , epx_configuration.num_gears);
         break;
     default:
-        update_flash = false; //if it wasn't the other cases, don't update the flash memory
+        update_config_flash = false; //if it wasn't the other cases, don't update the flash memory
         break;
     }
     sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld, %ld",epx_configuration.gear_pos[0], epx_configuration.gear_pos[1], epx_configuration.gear_pos[2], epx_configuration.gear_pos[3], epx_configuration.gear_pos[4], epx_configuration.gear_pos[5]);
@@ -341,9 +342,9 @@ void data_handler_sch_execute(void)
         NRF_LOG_INFO("data_process_command, %d", data_process_command);
     }
 
-    if(update_flash)
+    if(update_config_flash)
     {
-        update_flash = false;
+        update_config_flash = false;
         mem_epx_config_update(epx_configuration);
     }
 
