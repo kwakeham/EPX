@@ -88,13 +88,6 @@ static epx_configuration_t m_epx_cfg =
     .Ki = 0.0f,
     .Kd = 0.0f,
 
-    // .current_rotations = 0,
-    // .current_angle = 0,
-    // .current_gear = 0,
-
-    // .upshifts = 0,
-    // .downshifts = 0,
-
     .sin_min = 0,
     .sin_max = 0,
     .cos_min = 0,
