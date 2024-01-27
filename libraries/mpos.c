@@ -244,7 +244,7 @@ void mpos_display_value(void)
         mpos_min_max(); // store min max for average offset
 
         current_angle += rotation_count*360;
-        current_angle += link_epx_pos->current_rotations*360;
+        // current_angle += link_epx_pos->current_rotations*360;
 
         float drive = pidController(ble_angle,(float)current_angle);
 
@@ -269,6 +269,7 @@ void mpos_display_value(void)
                     drv8874_nsleep(0); //sleep the motor driver
                     sleep_count = 0 ; //reset the sleep count last
                     //We not been adjusting the motor for a while so it's a good time to write epx_pos memory
+
                 }
             }
         }
