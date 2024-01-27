@@ -344,8 +344,10 @@ void data_handler_sch_execute(void)
 
     if(update_config_flash)
     {
+        NRF_LOG_INFO("data_handler_sch_execute save flash");
         update_config_flash = false;
         mem_epx_config_update(epx_configuration);
+        mem_epx_position_update(epx_position);
     }
 
 }
