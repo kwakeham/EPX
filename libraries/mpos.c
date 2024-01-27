@@ -54,7 +54,7 @@ static double angle_old; // last angle to keep track of if we need to add or sub
 
 APP_TIMER_DEF(m_repeat_action);
 
-float ble_angle = 180.0f;
+// float ble_angle = 180.0f;
 
 void saadc_callback(nrfx_saadc_evt_t const * p_event)
 {
@@ -228,7 +228,8 @@ float angle(int16_t hall_0, int16_t hall_1)
 
 void mpos_update_angle(float target_angle)
 {
-    ble_angle = target_angle;
+    // ble_angle = target_angle;
+    link_epx_pos->current_angle = target_angle;
 }
 
 void mpos_display_value(void)
@@ -246,11 +247,14 @@ void mpos_display_value(void)
         current_angle += rotation_count*360;
         // current_angle += link_epx_pos->current_rotations*360;
 
-        float drive = pidController(ble_angle,(float)current_angle);
+        // float drive = pidController(ble_angle,(float)current_angle);
+        float drive = pidController(link_epx_pos->current_angle,(float)current_angle);
+
 
         if (!shifting) //if we aren't shifting 
         {
-            if ((int16_t)(ble_angle - current_angle) > angle_threshold || (int16_t)(current_angle - ble_angle) > angle_threshold) // this will be the trigger to wake the motor controller
+            // if ((int16_t)(ble_angle - current_angle) > angle_threshold || (int16_t)(current_angle - ble_angle) > angle_threshold) // this will be the trigger to wake the motor controller
+            if ((int16_t)(link_epx_pos->current_angle - current_angle) > angle_threshold || (int16_t)(current_angle - link_epx_pos->current_angle) > angle_threshold)
             {
                     NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
                     shifting = true; // if the drive strength is large then on the next
