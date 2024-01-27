@@ -222,8 +222,6 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
     {
          epx_positions.current_gear += shift_count;
     }
-    
-
 
     //guards to ensure it stays within number of gears
     if(epx_positions.current_gear > epx_configuration.num_gears-1)
@@ -308,7 +306,7 @@ void data_handler_command_gear_value(void)
         epx_configuration.gear_pos[12] = data_handler_command_number_return(2);
         break;
     case 0x65: //14 - e
-        epx_configuration.gear_pos[12] = data_handler_command_number_return(2);
+        epx_configuration.gear_pos[13] = data_handler_command_number_return(2);
         break;
     case 0x66: //f
         epx_configuration.num_gears = data_handler_command_number_return(2);
