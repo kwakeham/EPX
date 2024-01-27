@@ -48,7 +48,7 @@ static nrf_saadc_value_t cos_max;
 static nrf_saadc_value_t sin_avg;
 static nrf_saadc_value_t cos_avg;
 
-static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
+// static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
 static epx_position_configuration_t *link_epx_pos = NULL;
 static double angle_old; // last angle to keep track of if we need to add or subtract an angle
 
@@ -212,14 +212,14 @@ float angle(int16_t hall_0, int16_t hall_1)
         if ((angle_old- rotation_angle) > 180.0)
         {
             link_epx_pos->current_rotations++;
-            rotation_count++;
+            // rotation_count++;
         }
     } else if (angle_old < rotation_angle)
     {
         if ((rotation_angle-angle_old) > 180.0)
         {
             link_epx_pos->current_rotations--;
-            rotation_count--;
+            // rotation_count--;
         }
     }
     angle_old = rotation_angle;
@@ -244,11 +244,11 @@ void mpos_display_value(void)
 
         mpos_min_max(); // store min max for average offset
 
-        current_angle += rotation_count*360;
-        // current_angle += link_epx_pos->current_rotations*360;
+        // current_angle += rotation_count*360;
+        current_angle += (link_epx_pos->current_rotations)*360;
 
         // float drive = pidController(ble_angle,(float)current_angle);
-        float drive = pidController(link_epx_pos->current_angle,(float)current_angle);
+        float drive = pidController((link_epx_pos->current_angle),(float)current_angle);
 
 
         if (!shifting) //if we aren't shifting 
