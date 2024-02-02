@@ -14,12 +14,6 @@
 
 #include "titan_mem.h"
 
-/**
- * @brief update the kp from default
- * 
- * @param temp_Kp 
- */
-void pid_update_gains(void);
 
 void pid_link_memory(epx_configuration_t *temp_link_epx_values);
 

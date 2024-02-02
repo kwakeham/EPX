@@ -17,15 +17,9 @@
 #include "nrf_delay.h"
 
 
-// PID Controller parameters
-float Kp = 10.0;   // Proportional gain
-float Ki = 1.5;  // Integral gain
-float Kd = 3;  // Derivative gain
-
 //At 128hz kp = 9
 //At 256hz (128 repeat) kp = 18
 //AT 512hz kp = 35-40
-
 
 // PID Controller state variables
 float previousError = 0.0;
@@ -44,13 +38,6 @@ float DeadMax = 50;
 float DeadMin = -50;
 
 static epx_configuration_t *link_epx_values = NULL;
-
-void pid_update_gains(void)
-{
-    Kp =link_epx_values->Kp;
-    Ki =link_epx_values->Ki;
-    Kd =link_epx_values->Kd;
-}
 
 void pid_link_memory(epx_configuration_t *temp_link_epx_values)
 {
@@ -78,7 +65,8 @@ float pidController(float setpoint, float measuredValue) {
     float derivative = error - previousError;
     
     // Calculate the control signal
-    float controlSignal = Kp * error + Ki * integral + Kd * derivative;
+    float controlSignal = (link_epx_values->Kp) * error + (link_epx_values->Ki) * integral + (link_epx_values->Kd) * derivative;
+    
     
     // Update state variables
     previousError = error;
