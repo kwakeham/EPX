@@ -39,6 +39,7 @@ char buff1[50];
 char buff2[50];
 
 bool update_config_flash = false; //Update the falsh memory from the main loop
+bool update_pos_flash = false; //Update the falsh memory from the main loop
 
 bool shift_mode = true; //if true then we are in a gear mode, if false we're in an angle mode 
 
@@ -341,10 +342,16 @@ void data_handler_sch_execute(void)
 
     if(update_config_flash)
     {
-        NRF_LOG_INFO("data_handler_sch_execute save flash");
+        NRF_LOG_INFO("data_handler_sch_execute config flash update");
         update_config_flash = false;
         mem_epx_config_update(epx_configuration);
-        mem_epx_position_update(epx_position);
+    }
+
+    if(update_pos_flash)
+    {
+        NRF_LOG_INFO("data_handler_sch_execute position flash update");
+        update_pos_flash = false;
+        // mem_epx_position_update(epx_position);
     }
 
 }
@@ -356,5 +363,11 @@ void data_handler_get_flash_values(void)
     pid_link_memory(&epx_configuration); //link the local value to the PID so that the PID isn't carrying it's own values
     mpos_link_memory(&epx_position);//link the local value to the mpos controller
 }
+
+void data_handler_req_update_position_flash(void)
+{
+    update_pos_flash = true;
+}
+
 
 

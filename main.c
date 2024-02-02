@@ -154,7 +154,7 @@ int main(void)
     data_handler_get_flash_values(); //load the flash values to the datahandler
 
     //Start Saadc and motor drivers
-    mpos_init();
+    mpos_init(&data_handler_req_update_position_flash);
     drv8874_init();
 
 

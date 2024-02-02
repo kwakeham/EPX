@@ -52,6 +52,9 @@ static nrf_saadc_value_t cos_avg;
 static epx_position_configuration_t *link_epx_pos = NULL;
 static double angle_old; // last angle to keep track of if we need to add or subtract an angle
 
+static void _default_pos_save_callback(void) {}
+static voidfunctionptr_t  m_registered_pos_save_callback = &_default_pos_save_callback;
+
 APP_TIMER_DEF(m_repeat_action);
 
 // float ble_angle = 180.0f;
@@ -83,10 +86,13 @@ void mpos_acquire(void *p_context)
 }
 
 
-void mpos_init(void) //Initialize the SAADC and timers for sampling
+void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and timers for sampling
 {
     NRF_LOG_INFO("MPOS init");
     ret_code_t err_code;
+
+    m_registered_pos_save_callback = pos_save_callback;
+
     nrfx_saadc_config_t saadc_config;
     saadc_config.resolution = NRF_SAADC_RESOLUTION_12BIT; //need to manually set the resolution or else it'll default to 8 bit
     // saadc_config.oversample = NRF_SAADC_OVERSAMPLE_DISABLED; // default is 4 sample over sampling so need to override that.
@@ -272,6 +278,7 @@ void mpos_display_value(void)
                     shifting = false; // leave shift mode
                     drv8874_nsleep(0); //sleep the motor driver
                     sleep_count = 0 ; //reset the sleep count last
+                    m_registered_pos_save_callback();
                     //We not been adjusting the motor for a while so it's a good time to write epx_pos memory
 
                 }

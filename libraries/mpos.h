@@ -23,13 +23,20 @@
 extern "C" {
 #endif
 
+/**
+ * @brief 
+ * 
+ */
+typedef void (* voidfunctionptr_t)(void);
+
+
 void saadc_callback(nrfx_saadc_evt_t const * p_event);
 
 /**
  * @brief Initialize the SAADC and setup oversampling and burst
  * 
  */
-void mpos_init(void);
+void mpos_init(voidfunctionptr_t pos_save_callback);
 
 /**
  * @brief Will be removed, test conversion and write

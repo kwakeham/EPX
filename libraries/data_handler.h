@@ -37,4 +37,6 @@ void data_handler_sch_execute(void);
 
 void data_handler_get_flash_values(void);
 
+void data_handler_req_update_position_flash(void);
+
 #endif
