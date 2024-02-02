@@ -47,8 +47,8 @@ static nrf_saadc_value_t sin_max = 2500;
 static nrf_saadc_value_t cos_min = 1500;
 static nrf_saadc_value_t cos_max = 2600;
 
-static nrf_saadc_value_t sin_avg;
-static nrf_saadc_value_t cos_avg;
+static nrf_saadc_value_t sin_avg = 2030;
+static nrf_saadc_value_t cos_avg = 2030;
 
 // static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
 static epx_position_configuration_t *link_epx_pos = NULL;
