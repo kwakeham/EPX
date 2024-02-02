@@ -136,21 +136,18 @@ void data_handler_command_processor(void)
     case 0x70: //p Set Kp
         NRF_LOG_INFO("little P");
         epx_configuration.Kp =  data_handler_command_float_return(1);
-        // pid_update_gains();
         data_handler_show_gains();
         break;
 
     case 0x69: //i set Ki
         NRF_LOG_INFO("little i");
         epx_configuration.Ki =  data_handler_command_float_return(1);
-        // pid_update_gains();
         data_handler_show_gains();
         break;
 
     case 0x64: //d Set Kd
         NRF_LOG_INFO("little d");
         epx_configuration.Kd =  data_handler_command_float_return(1);
-        // pid_update_gains();
         data_handler_show_gains();
         break;
 
