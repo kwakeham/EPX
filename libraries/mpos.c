@@ -52,12 +52,14 @@ static nrf_saadc_value_t cos_avg = 2030;
 
 // static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
 static epx_position_configuration_t *link_epx_pos = NULL;
-static double angle_old; // last angle to keep track of if we need to add or subtract an angle
+static float angle_old; // last angle to keep track of if we need to add or subtract an angle
 
 static void _default_pos_save_callback(void) {}
 static voidfunctionptr_t  m_registered_pos_save_callback = &_default_pos_save_callback;
 
 APP_TIMER_DEF(m_repeat_action);
+
+uint16_t wake_debug = 0;
 
 // float ble_angle = 180.0f;
 
@@ -217,14 +219,14 @@ float angle(int16_t hall_0, int16_t hall_1)
     rotation_angle = (atan2f((float)(hall_0-sin_avg),(float)(hall_1-cos_avg))*180/3.14159265359)+180 ;
     if (angle_old > rotation_angle)
     {
-        if ((angle_old- rotation_angle) > 180.0)
+        if ((angle_old - rotation_angle) > 180.0)
         {
             link_epx_pos->current_rotations++;
             // rotation_count++;
         }
     } else if (angle_old < rotation_angle)
     {
-        if ((rotation_angle-angle_old) > 180.0)
+        if ((rotation_angle - angle_old) > 180.0)
         {
             link_epx_pos->current_rotations--;
             // rotation_count--;
@@ -237,7 +239,7 @@ float angle(int16_t hall_0, int16_t hall_1)
 void mpos_update_angle(float target_angle)
 {
     // ble_angle = target_angle;
-    link_epx_pos->current_angle = target_angle;
+    link_epx_pos->target_angle = target_angle;
 }
 
 //This needs a name update TBD
@@ -246,24 +248,35 @@ void mpos_display_value(void)
     if (update_position) // if we got an updated position
     {
         update_position = false;
+        mpos_wake_debug();
         // angle(m_buffer_pool[0], m_buffer_pool(1));
-        float current_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);
+        float current_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);  //the bug is in here
+        if(wake_debug < 5)
+        {
+            NRF_LOG_INFO("cur angle: %d", (int16_t)(current_angle));
+        }
         sin_cos[0] = m_buffer_pool[0];
         sin_cos[1] = m_buffer_pool[1];
 
         mpos_min_max(); // store min max for average offset
+        mpos_wake_debug();
 
         // current_angle += rotation_count*360;
         current_angle += (link_epx_pos->current_rotations)*360;
+        if(wake_debug < 5)
+        {
+            NRF_LOG_INFO("cur angle: %d", (int16_t)(current_angle));
+        }
+        mpos_wake_debug();
 
         // float drive = pidController(ble_angle,(float)current_angle);
-        float drive = pidController((link_epx_pos->current_angle),(float)current_angle);
+        float drive = pidController((link_epx_pos->target_angle),(float)current_angle);
 
 
         if (!shifting) //if we aren't shifting 
         {
             // if ((int16_t)(ble_angle - current_angle) > angle_threshold || (int16_t)(current_angle - ble_angle) > angle_threshold) // this will be the trigger to wake the motor controller
-            if ((int16_t)(link_epx_pos->current_angle - current_angle) > angle_threshold || (int16_t)(current_angle - link_epx_pos->current_angle) > angle_threshold)
+            if ((int16_t)(link_epx_pos->target_angle - current_angle) > angle_threshold || (int16_t)(current_angle - link_epx_pos->target_angle) > angle_threshold)
             {
                     NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
                     shifting = true; // if the drive strength is large then on the next
@@ -308,10 +321,21 @@ void mpos_display_value(void)
 void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)
 {
     link_epx_pos = temp_link_epx_values;
+    angle_old = (link_epx_pos->target_angle) % 360;
 }
 
 void mpos_sincos_debug(void)
 {
     NRF_LOG_INFO("sin max, %d, min, %d",sin_max, sin_min);
     NRF_LOG_INFO("cos max, %d, min, %d",cos_max, cos_min);
+}
+
+void mpos_wake_debug(void)
+{
+    wake_debug++;
+    if(wake_debug<5)
+    {
+        NRF_LOG_INFO("%d, %d, %d", link_epx_pos->target_angle, link_epx_pos->current_gear, link_epx_pos->current_rotations);
+    }
+
 }
