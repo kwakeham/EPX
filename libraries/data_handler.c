@@ -351,7 +351,7 @@ void data_handler_sch_execute(void)
     {
         NRF_LOG_INFO("data_handler_sch_execute position flash update");
         update_pos_flash = false;
-        // mem_epx_position_update(epx_position);
+        mem_epx_position_update(epx_position);
     }
 
 }
