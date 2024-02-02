@@ -40,7 +40,7 @@ typedef struct
 {
     //current information for sleep restore data
     int32_t current_rotations;
-    int32_t current_angle;
+    int32_t target_angle;
     int8_t current_gear;
 
     //Historic data

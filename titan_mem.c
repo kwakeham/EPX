@@ -97,7 +97,7 @@ static epx_configuration_t m_epx_cfg =
 static epx_position_configuration_t m_epx_position_cfg =
 {
     .current_rotations = 0,
-    .current_angle = 0,
+    .target_angle = 0,
     .current_gear = 0,
 
     .upshifts = 0,
@@ -236,7 +236,7 @@ epx_configuration_t tm_fds_epx_config (void)
 epx_position_configuration_t tm_fds_epx_position (void)
 {
     NRF_LOG_INFO("current_rotations: %d", m_epx_position_cfg.current_rotations);
-    NRF_LOG_INFO("current_angle: %d", m_epx_position_cfg.current_angle);
+    NRF_LOG_INFO("target_angle: %d", m_epx_position_cfg.target_angle);
     NRF_LOG_INFO("current_gear: %d", m_epx_position_cfg.current_gear);
     return m_epx_position_cfg;
 }
