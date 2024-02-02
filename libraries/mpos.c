@@ -40,10 +40,12 @@ static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, 
 static nrf_saadc_value_t sin_cos[2]; //stores the current value of sin in sin_cos[0] and cos in sin_cos[1]
 
 //these are broken out to individual values because I think it'll be easier to understand
-static nrf_saadc_value_t sin_min = 32767;
-static nrf_saadc_value_t sin_max;
-static nrf_saadc_value_t cos_min = 32767;
-static nrf_saadc_value_t cos_max;
+//<info> mpos: sin max, 2515, min, 1522                                        
+//<info> mpos: cos max, 2640, min, 1492
+static nrf_saadc_value_t sin_min = 1550;
+static nrf_saadc_value_t sin_max = 2500;
+static nrf_saadc_value_t cos_min = 1500;
+static nrf_saadc_value_t cos_max = 2600;
 
 static nrf_saadc_value_t sin_avg;
 static nrf_saadc_value_t cos_avg;
@@ -238,6 +240,7 @@ void mpos_update_angle(float target_angle)
     link_epx_pos->current_angle = target_angle;
 }
 
+//This needs a name update TBD
 void mpos_display_value(void)
 {
     if (update_position) // if we got an updated position
@@ -279,6 +282,7 @@ void mpos_display_value(void)
                     drv8874_nsleep(0); //sleep the motor driver
                     sleep_count = 0 ; //reset the sleep count last
                     m_registered_pos_save_callback();
+                    mpos_sincos_debug();
                     //We not been adjusting the motor for a while so it's a good time to write epx_pos memory
 
                 }
@@ -304,4 +308,10 @@ void mpos_display_value(void)
 void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)
 {
     link_epx_pos = temp_link_epx_values;
+}
+
+void mpos_sincos_debug(void)
+{
+    NRF_LOG_INFO("sin max, %d, min, %d",sin_max, sin_min);
+    NRF_LOG_INFO("cos max, %d, min, %d",cos_max, cos_min);
 }

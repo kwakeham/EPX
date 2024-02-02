@@ -85,6 +85,8 @@ void mpos_display_value(void);
  */
 void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values);
 
+void mpos_sincos_debug(void);
+
 #ifdef __cplusplus
 }
 #endif
