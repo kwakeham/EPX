@@ -155,7 +155,7 @@ int main(void)
 
     //Start Saadc and motor drivers
     mpos_init(&data_handler_req_update_position_flash);
-    drv8874_init();
+    // drv8874_init();
 
 
 

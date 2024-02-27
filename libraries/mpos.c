@@ -32,8 +32,8 @@ uint32_t mpos_debug_counter = 0;
 #define sleep_threshold 600
 #define angle_threshold 10
 static bool update_position = false; // Flag to know if a new position has been acquired
-static bool shifting = true;
-static uint16_t sleep_count = 0;
+// static bool shifting = true;
+// static uint16_t sleep_count = 0;
 
 static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, isense order
 
@@ -42,13 +42,13 @@ static nrf_saadc_value_t sin_cos[2]; //stores the current value of sin in sin_co
 //these are broken out to individual values because I think it'll be easier to understand
 //<info> mpos: sin max, 2515, min, 1522                                        
 //<info> mpos: cos max, 2640, min, 1492
-static nrf_saadc_value_t sin_min = 1550;
-static nrf_saadc_value_t sin_max = 2500;
-static nrf_saadc_value_t cos_min = 1500;
-static nrf_saadc_value_t cos_max = 2600;
+static nrf_saadc_value_t sin_min = 0;
+static nrf_saadc_value_t sin_max = 0;
+static nrf_saadc_value_t cos_min = 0;
+static nrf_saadc_value_t cos_max = 0;
 
-static nrf_saadc_value_t sin_avg = 2030;
-static nrf_saadc_value_t cos_avg = 2030;
+static nrf_saadc_value_t sin_avg = 0;
+static nrf_saadc_value_t cos_avg = 0;
 
 // static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
 static epx_position_configuration_t *link_epx_pos = NULL;
@@ -60,6 +60,10 @@ static voidfunctionptr_t  m_registered_pos_save_callback = &_default_pos_save_ca
 APP_TIMER_DEF(m_repeat_action);
 
 uint16_t wake_debug = 0;
+
+uint8_t hall_power_count = 0;
+bool hall_state = 0;
+bool old_hall_state = 0;
 
 // float ble_angle = 180.0f;
 
@@ -81,7 +85,20 @@ void mpos_timer_handler(void *p_context)
 {
     // ret_code_t err_code;
     nrf_gpio_pin_clear(S_HALL_EN); //Enable the hall effect sensors, this starts drawing current
-    mpos_convert(); //do a converstion
+    if(nrf_gpio_pin_read(MAG_DIGITAL))
+    {
+        hall_state = true;
+        mpos_convert(); //do a converstion
+    } else
+    {
+        hall_state = false;
+    }
+
+    if (hall_state != old_hall_state)
+    {
+        hall_power_count++;
+    }
+    old_hall_state = hall_state;
 }
 
 void mpos_acquire(void *p_context)
@@ -140,11 +157,12 @@ void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and t
     err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
     APP_ERROR_CHECK(err_code);
 
-    err_code = app_timer_start(m_repeat_action, 128, NULL); //This starts the sampling timer for mpos_timer_handler -- 256 hz
+    err_code = app_timer_start(m_repeat_action, 64, NULL); //Move to 512 for more!
     APP_ERROR_CHECK(err_code);
 
     nrf_gpio_cfg_output(S_HALL_EN);
     nrf_gpio_pin_clear(S_HALL_EN);
+    nrf_gpio_cfg_input(MAG_DIGITAL, NRF_GPIO_PIN_PULLDOWN);
    
 }
 
@@ -248,72 +266,63 @@ void mpos_display_value(void)
     if (update_position) // if we got an updated position
     {
         update_position = false;
-        mpos_wake_debug();
+        // mpos_wake_debug();
         // angle(m_buffer_pool[0], m_buffer_pool(1));
         float current_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);  //the bug is in here
-        if(wake_debug < 5)
-        {
-            NRF_LOG_INFO("cur angle: %d", (int16_t)(current_angle));
-        }
         sin_cos[0] = m_buffer_pool[0];
         sin_cos[1] = m_buffer_pool[1];
 
         mpos_min_max(); // store min max for average offset
-        mpos_wake_debug();
+        // mpos_wake_debug();
 
         // current_angle += rotation_count*360;
         current_angle += (link_epx_pos->current_rotations)*360;
-        if(wake_debug < 5)
-        {
-            NRF_LOG_INFO("cur angle: %d", (int16_t)(current_angle));
-        }
-        mpos_wake_debug();
+        // if(wake_debug < 5)
+        // {
+        //     NRF_LOG_INFO("cur angle: %d", (int16_t)(current_angle));
+        // }
+        // mpos_wake_debug();
 
         // float drive = pidController(ble_angle,(float)current_angle);
-        float drive = pidController((link_epx_pos->target_angle),(float)current_angle);
+        // float drive = pidController((link_epx_pos->target_angle),(float)current_angle);
 
 
-        if (!shifting) //if we aren't shifting 
-        {
-            // if ((int16_t)(ble_angle - current_angle) > angle_threshold || (int16_t)(current_angle - ble_angle) > angle_threshold) // this will be the trigger to wake the motor controller
-            if ((int16_t)(link_epx_pos->target_angle - current_angle) > angle_threshold || (int16_t)(current_angle - link_epx_pos->target_angle) > angle_threshold)
-            {
-                    NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
-                    shifting = true; // if the drive strength is large then on the next
-                    drv8874_nsleep(1); //wake the motor driver since the next time around we'll have to drive it.
-            }
-            drive = 0.0f; // Override and set the drive strength of the motor to 0 just in case
-        } else
-        {
-            if(drive < 20.0f && drive > -20.0f)
-            {
-                sleep_count++; // sleep counter
-                if (sleep_count > sleep_threshold) //if we're above the threshold then we're ready to sleep the motor driver and leave shift mode
-                {
-                    NRF_LOG_INFO("Sleep the motor driver"); //debug statement for testing
-                    shifting = false; // leave shift mode
-                    drv8874_nsleep(0); //sleep the motor driver
-                    sleep_count = 0 ; //reset the sleep count last
-                    m_registered_pos_save_callback(); //If we have successfully move the derailleur to position, save the postion in case we lose power
-                    mpos_sincos_debug();
-                    //We not been adjusting the motor for a while so it's a good time to write epx_pos memory
+    //     if (!shifting) //if we aren't shifting 
+    //     {
+    //         // if ((int16_t)(ble_angle - current_angle) > angle_threshold || (int16_t)(current_angle - ble_angle) > angle_threshold) // this will be the trigger to wake the motor controller
+    //         if ((int16_t)(link_epx_pos->target_angle - current_angle) > angle_threshold || (int16_t)(current_angle - link_epx_pos->target_angle) > angle_threshold)
+    //         {
+    //                 NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
+    //                 shifting = true; // if the drive strength is large then on the next
+    //                 drv8874_nsleep(1); //wake the motor driver since the next time around we'll have to drive it.
+    //         }
+    //         drive = 0.0f; // Override and set the drive strength of the motor to 0 just in case
+    //     } else
+    //     {
+    //         if(drive < 20.0f && drive > -20.0f)
+    //         {
+    //             sleep_count++; // sleep counter
+    //             if (sleep_count > sleep_threshold) //if we're above the threshold then we're ready to sleep the motor driver and leave shift mode
+    //             {
+    //                 NRF_LOG_INFO("Sleep the motor driver"); //debug statement for testing
+    //                 shifting = false; // leave shift mode
+    //                 drv8874_nsleep(0); //sleep the motor driver
+    //                 sleep_count = 0 ; //reset the sleep count last
+    //                 m_registered_pos_save_callback(); //If we have successfully move the derailleur to position, save the postion in case we lose power
+    //                 mpos_sincos_debug();
+    //                 //We not been adjusting the motor for a while so it's a good time to write epx_pos memory
 
-                }
-            }
-        }
+    //             }
+    //         }
+    //     }
 
-        drv8874_drive((int16_t)drive);
+    //     drv8874_drive((int16_t)drive);
 
-        mpos_debug_counter++;
-        if (mpos_debug_counter %256 == 0)
-        {
-            NRF_LOG_DEBUG("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], drive, NRF_LOG_FLOAT(current_angle));
-        }
-        // NRF_LOG_INFO("%d, %d, %d, %d, %d, %d", m_buffer_pool[0], m_buffer_pool[1], sin_max, sin_min, sin_avg, cos_avg);
-
-        // NRF_LOG_RAW_INFO( NRF_LOG_FLOAT_MARKER "\n", NRF_LOG_FLOAT(current_angle));
-        
-
+        // mpos_debug_counter++;
+        // if (mpos_debug_counter %8 == 0)
+        // {
+        NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], hall_power_count, NRF_LOG_FLOAT(current_angle));
+        // }
     }
 
 }
