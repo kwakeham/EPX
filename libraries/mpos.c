@@ -321,7 +321,8 @@ void mpos_display_value(void)
         // mpos_debug_counter++;
         // if (mpos_debug_counter %8 == 0)
         // {
-        NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], hall_power_count, NRF_LOG_FLOAT(current_angle));
+        NRF_LOG_RAW_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER "\n", m_buffer_pool[0], m_buffer_pool[1], hall_power_count, NRF_LOG_FLOAT(current_angle));
+        // NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], hall_power_count, NRF_LOG_FLOAT(current_angle));
         // }
     }
 
