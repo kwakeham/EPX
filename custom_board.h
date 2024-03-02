@@ -50,7 +50,8 @@ extern "C" {
 
 #define nRST 21
 
-#define MAG_DIGITAL 22
+#define HALL_RD 22
+#define HALL_FD 23
 #define MAG_ANALOG 31
 
 #define LED_B 23
