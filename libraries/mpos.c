@@ -35,20 +35,32 @@ static bool update_position = false; // Flag to know if a new position has been 
 // static bool shifting = true;
 // static uint16_t sleep_count = 0;
 
-static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, isense order
+static bool rd_active = false; // Flag to know which derailleur
+static bool fd_active = false; // Flag to know which derailleur
 
-static nrf_saadc_value_t sin_cos[2]; //stores the current value of sin in sin_cos[0] and cos in sin_cos[1]
+static nrf_saadc_value_t m_buffer_pool[4]; //temporary Adc storage in sin, cos, isense order
+
+static nrf_saadc_value_t sin_cos[4]; //stores the current value of sin in sin_cos[0] and cos in sin_cos[1]
 
 //these are broken out to individual values because I think it'll be easier to understand
 //<info> mpos: sin max, 2515, min, 1522                                        
 //<info> mpos: cos max, 2640, min, 1492
-static nrf_saadc_value_t sin_min = 0;
-static nrf_saadc_value_t sin_max = 0;
-static nrf_saadc_value_t cos_min = 0;
-static nrf_saadc_value_t cos_max = 0;
+static nrf_saadc_value_t sin_min_rd = 0;
+static nrf_saadc_value_t sin_max_rd = 0;
+static nrf_saadc_value_t cos_min_rd = 0;
+static nrf_saadc_value_t cos_max_rd = 0;
 
-static nrf_saadc_value_t sin_avg = 0;
-static nrf_saadc_value_t cos_avg = 0;
+static nrf_saadc_value_t sin_avg_rd = 0;
+static nrf_saadc_value_t cos_avg_rd = 0;
+
+
+static nrf_saadc_value_t sin_min_fd = 0;
+static nrf_saadc_value_t sin_max_fd = 0;
+static nrf_saadc_value_t cos_min_fd = 0;
+static nrf_saadc_value_t cos_max_fd = 0;
+
+static nrf_saadc_value_t sin_avg_fd = 0;
+static nrf_saadc_value_t cos_avg_fd = 0;
 
 // static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
 static epx_position_configuration_t *link_epx_pos = NULL;
@@ -85,7 +97,9 @@ void mpos_timer_handler(void *p_context)
 {
     // ret_code_t err_code;
     nrf_gpio_pin_clear(S_HALL_EN); //Enable the hall effect sensors, this starts drawing current
-    if(nrf_gpio_pin_read(MAG_DIGITAL))
+    rd_active = nrf_gpio_pin_read(HALL_RD);
+    fd_active = nrf_gpio_pin_read(HALL_FD);
+    if(rd_active || fd_active)
     {
         hall_state = true;
         mpos_convert(); //do a converstion
@@ -146,7 +160,11 @@ void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and t
     nrfx_saadc_channel_init(1, &chan_config);
     APP_ERROR_CHECK(err_code);
 
-    chan_config.pin_p = NRF_SAADC_INPUT_AIN1; //isense
+    chan_config.pin_p = NRF_SAADC_INPUT_AIN1; //sin FD
+    nrfx_saadc_channel_init(2, &chan_config);
+    APP_ERROR_CHECK(err_code);
+
+    chan_config.pin_p = NRF_SAADC_INPUT_AIN3; //cos FD
     nrfx_saadc_channel_init(3, &chan_config);
     APP_ERROR_CHECK(err_code);
 
@@ -162,7 +180,8 @@ void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and t
 
     nrf_gpio_cfg_output(S_HALL_EN);
     nrf_gpio_pin_clear(S_HALL_EN);
-    nrf_gpio_cfg_input(MAG_DIGITAL, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input(HALL_RD, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input(HALL_FD, NRF_GPIO_PIN_PULLDOWN);
    
 }
 
@@ -205,36 +224,84 @@ int16_t mpos_average(int16_t min, int16_t max, int16_t range, int16_t defaultVal
     return temp_average;
 }
 
-void mpos_min_max(void)
+void mpos_min_max_rd(void)
 {
     //finds new min or max
-    if(sin_cos[0]>sin_max)
+    if(sin_cos[0]>sin_max_rd)
     {
-        sin_max = sin_cos[0];
+        sin_max_rd = sin_cos[0];
     }
-    if(sin_cos[0]<sin_min)
+    if(sin_cos[0]<sin_min_rd)
     {
-        sin_min = sin_cos[0];
+        sin_min_rd = sin_cos[0];
     }
-    if(sin_cos[1]>cos_max)
+    if(sin_cos[1]>cos_max_rd)
     {
-        cos_max = sin_cos[1];
+        cos_max_rd = sin_cos[1];
     }
-    if(sin_cos[1]<cos_min)
+    if(sin_cos[1]<cos_min_rd)
     {
-        cos_min = sin_cos[1];
+        cos_min_rd = sin_cos[1];
     }
 
-    sin_avg = mpos_average(sin_min, sin_max, default_range, default_sin_cos_offset);
-    cos_avg = mpos_average(cos_min, cos_max, default_range, default_sin_cos_offset);
+    sin_avg_rd = mpos_average(sin_min_rd, sin_max_rd, default_range, default_sin_cos_offset);
+    cos_avg_rd = mpos_average(cos_min_rd, cos_max_rd, default_range, default_sin_cos_offset);
+    
+}
+
+void mpos_min_max_fd(void)
+{
+    //finds new min or max
+    if(sin_cos[2]>sin_max_fd)
+    {
+        sin_max_fd = sin_cos[2];
+    }
+    if(sin_cos[2]<sin_min_fd)
+    {
+        sin_min_fd = sin_cos[2];
+    }
+    if(sin_cos[3]>cos_max_fd)
+    {
+        cos_max_fd = sin_cos[3];
+    }
+    if(sin_cos[3]<cos_min_fd)
+    {
+        cos_min_fd = sin_cos[3];
+    }
+
+    sin_avg_fd = mpos_average(sin_min_fd, sin_max_fd, default_range, default_sin_cos_offset);
+    cos_avg_fd = mpos_average(cos_min_fd, cos_max_fd, default_range, default_sin_cos_offset);
     
 }
 
 
-float angle(int16_t hall_0, int16_t hall_1)
+float angle_rd(int16_t hall_0, int16_t hall_1)
 {
     float rotation_angle;
-    rotation_angle = (atan2f((float)(hall_0-sin_avg),(float)(hall_1-cos_avg))*180/3.14159265359)+180 ;
+    rotation_angle = (atan2f((float)(hall_0-sin_avg_rd),(float)(hall_1-cos_avg_rd))*180/3.14159265359)+180 ;
+    if (angle_old > rotation_angle)
+    {
+        if ((angle_old - rotation_angle) > 180.0)
+        {
+            link_epx_pos->current_rotations++;
+            // rotation_count++;
+        }
+    } else if (angle_old < rotation_angle)
+    {
+        if ((rotation_angle - angle_old) > 180.0)
+        {
+            link_epx_pos->current_rotations--;
+            // rotation_count--;
+        }
+    }
+    angle_old = rotation_angle;
+    return(rotation_angle);
+}
+
+float angle_fd(int16_t hall_0, int16_t hall_1)
+{
+    float rotation_angle;
+    rotation_angle = (atan2f((float)(hall_0-sin_avg_fd),(float)(hall_1-cos_avg_fd))*180/3.14159265359)+180 ;
     if (angle_old > rotation_angle)
     {
         if ((angle_old - rotation_angle) > 180.0)
@@ -268,15 +335,31 @@ void mpos_display_value(void)
         update_position = false;
         // mpos_wake_debug();
         // angle(m_buffer_pool[0], m_buffer_pool(1));
-        float current_angle = angle(m_buffer_pool[0], m_buffer_pool[1]);  //the bug is in here
-        sin_cos[0] = m_buffer_pool[0];
-        sin_cos[1] = m_buffer_pool[1];
+        float rd_current_angle = 0;
+        // float fd_current_angle = 0;
 
-        mpos_min_max(); // store min max for average offset
+        // sin_cos[0] = m_buffer_pool[0];
+        // sin_cos[1] = m_buffer_pool[1];
+        // sin_cos[2] = m_buffer_pool[2];
+        // sin_cos[3] = m_buffer_pool[3];
+        if(rd_active)
+        {
+            rd_active = false;
+            sin_cos[0] = m_buffer_pool[0];
+            sin_cos[1] = m_buffer_pool[1];
+                       
+        }
+
+        mpos_min_max_rd(); // store min max for average offset
+        rd_current_angle = angle_rd(sin_cos[0], sin_cos[1]);  //the bug is in here
+        
+        rd_current_angle += (link_epx_pos->current_rotations)*360;
+
+        // mpos_min_max_rd(); // store min max for average offset
         // mpos_wake_debug();
 
         // current_angle += rotation_count*360;
-        current_angle += (link_epx_pos->current_rotations)*360;
+        // current_angle += (link_epx_pos->current_rotations)*360;
         // if(wake_debug < 5)
         // {
         //     NRF_LOG_INFO("cur angle: %d", (int16_t)(current_angle));
@@ -321,7 +404,7 @@ void mpos_display_value(void)
         // mpos_debug_counter++;
         // if (mpos_debug_counter %8 == 0)
         // {
-        NRF_LOG_RAW_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER "\n", m_buffer_pool[0], m_buffer_pool[1], hall_power_count, NRF_LOG_FLOAT(current_angle));
+        NRF_LOG_RAW_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER "\n", m_buffer_pool[0], m_buffer_pool[1], hall_power_count, NRF_LOG_FLOAT(rd_current_angle));
         // NRF_LOG_INFO("%d, %d, %d, " NRF_LOG_FLOAT_MARKER, m_buffer_pool[0], m_buffer_pool[1], hall_power_count, NRF_LOG_FLOAT(current_angle));
         // }
     }
@@ -336,8 +419,8 @@ void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)
 
 void mpos_sincos_debug(void)
 {
-    NRF_LOG_INFO("sin max, %d, min, %d",sin_max, sin_min);
-    NRF_LOG_INFO("cos max, %d, min, %d",cos_max, cos_min);
+    NRF_LOG_INFO("sin max, %d, min, %d",sin_max_rd, sin_min_rd);
+    NRF_LOG_INFO("cos max, %d, min, %d",cos_max_rd, cos_min_rd);
 }
 
 void mpos_wake_debug(void)

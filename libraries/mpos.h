@@ -65,9 +65,12 @@ int16_t mpos_average(int16_t min, int16_t max, int16_t range, int16_t defaultVal
  * @brief Calculates and updates the min/max values
  * 
  */
-void mpos_min_max(void);
+void mpos_min_max_rd(void);
+void mpos_min_max_fd(void);
 
-float angle(int16_t hall_0, int16_t hall_1);
+float angle_rd(int16_t hall_0, int16_t hall_1);
+
+float angle_fd(int16_t hall_0, int16_t hall_1);
 
 /**
  * @brief temporary to update the target angle from BLE
