@@ -76,6 +76,7 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 		break;
 
 	case MULTI_BTN_EVENT_CH3_LONG:
+        data_handler_shift_mode_handler(false, false);
 		break;
 
 	case MULTI_BTN_EVENT_CH4_LONG:
@@ -243,22 +244,22 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
 void data_handler_shift_mode_handler(bool command, bool mode)
 {
     if (command) //if we are dealing with a text command we'll do some decode
-{
-    switch (command_message[1])
     {
-    case 0x61: //a
-        shift_mode = false;
-        sprintf(buff1, "Angle Mode");
-        break;
+        switch (command_message[1])
+        {
+        case 0x61: //a
+            shift_mode = false;
+            sprintf(buff1, "Angle Mode");
+            break;
 
-    case 0x67: //g
-        shift_mode = true;
-        sprintf(buff1, "Gear Mode");
-        break; 
+        case 0x67: //g
+            shift_mode = true;
+            sprintf(buff1, "Gear Mode");
+            break; 
 
-    default:
-        break;
-    }
+        default:
+            break;
+        }
     } else // we're looking at a direct mode switch
     {
         shift_mode = mode;
