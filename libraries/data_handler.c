@@ -131,7 +131,7 @@ void data_handler_command_processor(void)
 
     case 0x6D: //g Set the position for each Gear
         NRF_LOG_INFO("little m");
-        data_handler_shift_mode_handler();
+        data_handler_shift_mode_handler(true, false); // if the command (first) is true the mode (2nd) is ignored
         break;
 
     case 0x70: //p Set Kp
@@ -237,7 +237,9 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
     mpos_update_angle((float)epx_configuration.gear_pos[(epx_position.current_gear)]);
 }
 
-void data_handler_shift_mode_handler(void)
+void data_handler_shift_mode_handler(bool command, bool mode)
+{
+    if (command) //if we are dealing with a text command we'll do some decode
 {
     switch (command_message[1])
     {
@@ -254,9 +256,13 @@ void data_handler_shift_mode_handler(void)
     default:
         break;
     }
+    } else // we're looking at a direct mode switch
+    {
+        shift_mode = mode;
+    }
+
     NRF_LOG_INFO(" %s %d" , buff1);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
-    
 }
 
 void data_handler_command_gear_value(void)

@@ -27,7 +27,7 @@ void data_handler_force_save(char command);
 
 void data_handler_shift_gear_handler(bool command, int shift_count);
 
-void data_handler_shift_mode_handler(void);
+void data_handler_shift_mode_handler(bool command, bool mode);
 
 void data_handler_command_gear_value(void);
 
