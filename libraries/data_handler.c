@@ -203,23 +203,26 @@ void data_handler_force_save(char command)
 
 void data_handler_shift_gear_handler(bool command, int shift_count)
 {
-    if (command) //if there is a command then process and decode
+    if(shift_mode) //check if we're in shift mode
     {
-        switch (command_message[1])
+        if (command ) //if there is a command then process and decode
         {
-        case 0x2B: //+
-            epx_position.current_gear++;
-            break;
-        case 0x2D: //-
-            epx_position.current_gear--;
-            break;
-        default:
-            epx_position.current_gear = data_handler_command_number_return(1);
-            break;
+            switch (command_message[1])
+            {
+            case 0x2B: //+
+                epx_position.current_gear++;
+                break;
+            case 0x2D: //-
+                epx_position.current_gear--;
+                break;
+            default:
+                epx_position.current_gear = data_handler_command_number_return(1);
+                break;
+            }
+        } else //no command then process the shift count
+        {
+            epx_position.current_gear += shift_count;
         }
-    } else //no command then process the shift count
-    {
-         epx_position.current_gear += shift_count;
     }
 
     //guards to ensure it stays within number of gears
