@@ -29,10 +29,10 @@ uint32_t mpos_debug_counter = 0;
 #define default_sin_cos_offset 2078 //Half?
 #define default_range 50
 
-#define sleep_threshold 600
+#define SLEEP_THRESHOLD 600
 #define ANGLE_THRESHOLD 10
 static bool update_position = false; // Flag to know if a new position has been acquired
-static bool shifting = true;
+static bool derailleur_moving = true;
 static uint16_t sleep_count = 0;
 
 static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, isense order
@@ -254,29 +254,32 @@ void mpos_motor_drive(void)
         current_angle += (link_epx_pos->current_rotations)*360; //find the total current angle
         float drive = pidController((link_epx_pos->target_angle),(float)current_angle);
 
-        if (!shifting) //if we aren't shifting
+        if (derailleur_moving) //if we are derailleur_moving
         {
-            if (!mpos_angle_in_threshold(current_angle))
+            if(drive < 20.0f && drive > -20.0f) //is our drive strength low
             {
-                    NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
-                    shifting = true; // if the drive strength is large then on the next
-                    drv8874_nsleep(1); //wake the motor driver since the next time around we'll have to drive it.
-            }
-            drive = 0.0f; // Override and set the drive strength of the motor to 0 just in case
-        } else
-        {
-            if(drive < 20.0f && drive > -20.0f)
-            {
+                //if we're basically at the location because drive strength is low
                 sleep_count++; // sleep counter
-                if (sleep_count > sleep_threshold) //if we're above the threshold then we're ready to sleep the motor driver and leave shift mode
+                if (sleep_count > SLEEP_THRESHOLD) //if we're above the threshold then we're ready to sleep the motor driver and leave shift mode
                 {
-                    shifting = false; // leave shift mode
+                    derailleur_moving = false; // leave shift mode
                     NRF_LOG_INFO("Sleep the motor driver"); //debug statement for testing
                     drv8874_nsleep(0); //sleep the motor driver
                     sleep_count = 0 ; //reset the sleep count last
                     m_registered_pos_save_callback(); //If we have successfully move the derailleur to position, save the postion in case we lose power
                 }
             }
+
+        }
+        else //not derailleur_moving
+        {
+            if (!mpos_angle_in_threshold(current_angle))
+            {
+                    NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
+                    derailleur_moving = true; // if the drive strength is large then on the next
+                    drv8874_nsleep(1); //wake the motor driver since the next time around we'll have to drive it.
+            }
+            drive = 0.0f; // Override and set the drive strength of the motor to 0 just in case
         }
         drv8874_drive((int16_t)drive);
     }
