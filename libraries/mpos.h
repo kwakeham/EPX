@@ -79,6 +79,15 @@ void mpos_update_angle(float target_angle);
 void mpos_display_value(void);
 
 /**
+ * @brief Returns if the angle is within +/- threshold of Define ANGLE_THRESHOLD
+ * 
+ * @param ref_angle 
+ * @return true ref_angle is less than threshold
+ * @return false re_angle greater than threshold
+ */
+bool mpos_angle_in_threshold(float ref_angle);
+
+/**
  * @brief link memory so that the mpos will know motor information
  * 
  * @param temp_link_epx_values 

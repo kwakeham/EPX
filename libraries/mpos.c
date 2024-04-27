@@ -30,7 +30,7 @@ uint32_t mpos_debug_counter = 0;
 #define default_range 50
 
 #define sleep_threshold 600
-#define angle_threshold 10
+#define ANGLE_THRESHOLD 10
 static bool update_position = false; // Flag to know if a new position has been acquired
 static bool shifting = true;
 static uint16_t sleep_count = 0;
@@ -256,7 +256,7 @@ void mpos_display_value(void)
 
         if (!shifting) //if we aren't shifting
         {
-            if ((int16_t)(link_epx_pos->target_angle - current_angle) > angle_threshold || (int16_t)(current_angle - link_epx_pos->target_angle) > angle_threshold)
+            if (!mpos_angle_in_threshold(current_angle))
             {
                     NRF_LOG_INFO("Wake up the motor driver"); //debug statement for testing
                     shifting = true; // if the drive strength is large then on the next
@@ -281,6 +281,12 @@ void mpos_display_value(void)
         drv8874_drive((int16_t)drive);
     }
 
+}
+
+bool mpos_angle_in_threshold(float ref_angle)
+{   
+    int16_t angle_difference = link_epx_pos->target_angle - ref_angle;
+    return (abs(angle_difference) < ANGLE_THRESHOLD); //
 }
 
 void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)
