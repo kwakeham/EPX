@@ -162,7 +162,7 @@ int main(void)
     // Enter main loop.
     for (;;)
     {
-        mpos_display_value();
+        mpos_motor_drive();
         data_handler_sch_execute();
         idle_state_handle();
     }

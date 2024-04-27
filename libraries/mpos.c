@@ -241,7 +241,7 @@ void mpos_update_angle(float target_angle)
 }
 
 //This needs a name update TBD
-void mpos_display_value(void)
+void mpos_motor_drive(void)
 {
     if (update_position) // if we got an updated position
     {
@@ -270,8 +270,8 @@ void mpos_display_value(void)
                 sleep_count++; // sleep counter
                 if (sleep_count > sleep_threshold) //if we're above the threshold then we're ready to sleep the motor driver and leave shift mode
                 {
-                    NRF_LOG_INFO("Sleep the motor driver"); //debug statement for testing
                     shifting = false; // leave shift mode
+                    NRF_LOG_INFO("Sleep the motor driver"); //debug statement for testing
                     drv8874_nsleep(0); //sleep the motor driver
                     sleep_count = 0 ; //reset the sleep count last
                     m_registered_pos_save_callback(); //If we have successfully move the derailleur to position, save the postion in case we lose power

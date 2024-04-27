@@ -76,7 +76,7 @@ float angle(int16_t hall_0, int16_t hall_1);
  */
 void mpos_update_angle(float target_angle);
 
-void mpos_display_value(void);
+void mpos_motor_drive(void);
 
 /**
  * @brief Returns if the angle is within +/- threshold of Define ANGLE_THRESHOLD
