@@ -206,7 +206,7 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
 {
     if(shift_mode) //check if we're in shift mode
     {
-        if (command ) //if there is a command then process and decode
+        if (command) //if there is a command then process and decode
         {
             switch (command_message[1])
             {
@@ -224,24 +224,26 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
         {
             epx_position.current_gear += shift_count;
         }
+
+        //guards to ensure it stays within number of gears
+        if(epx_position.current_gear > epx_configuration.num_gears-1)
+        {
+            epx_position.current_gear = epx_configuration.num_gears-1;
+        }
+
+        if(epx_position.current_gear < 0)
+        {
+            epx_position.current_gear = 0;
+        }
+
+        NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_position.current_gear, epx_configuration.gear_pos[(epx_position.current_gear)]);
+        mpos_update_angle(true,(float)epx_configuration.gear_pos[(epx_position.current_gear)]);
     } else //if we're in angle mode
     {
-
+        mpos_update_angle(false, (float)shift_count*5);
     }
 
-    //guards to ensure it stays within number of gears
-    if(epx_position.current_gear > epx_configuration.num_gears-1)
-    {
-        epx_position.current_gear = epx_configuration.num_gears-1;
-    }
-
-    if(epx_position.current_gear < 0)
-    {
-        epx_position.current_gear = 0;
-    }
-
-    NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_position.current_gear, epx_configuration.gear_pos[(epx_position.current_gear)]);
-    mpos_update_angle(true,(float)epx_configuration.gear_pos[(epx_position.current_gear)]);
+    
 }
 
 void data_handler_shift_mode_handler(bool command, bool mode)
