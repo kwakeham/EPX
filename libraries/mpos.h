@@ -72,9 +72,10 @@ float angle(int16_t hall_0, int16_t hall_1);
 /**
  * @brief temporary to update the target angle from BLE
  * 
- * @param target_angle 
+ * @param direct is this the direct angle (true) or is it incremental (false)
+ * @param new_target_angle The direct angle or the increment
  */
-void mpos_update_angle(float target_angle);
+void mpos_update_angle(bool direct, float new_target_angle);
 
 void mpos_motor_drive(void);
 

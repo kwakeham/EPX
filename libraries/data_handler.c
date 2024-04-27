@@ -165,7 +165,7 @@ void data_handler_command_processor(void)
         NRF_LOG_INFO("little t");
         if (!shift_mode)
         {
-            mpos_update_angle(data_handler_command_float_return(1));
+            mpos_update_angle(true, data_handler_command_float_return(1));
         }
         break;
         
@@ -224,6 +224,9 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
         {
             epx_position.current_gear += shift_count;
         }
+    } else //if we're in angle mode
+    {
+
     }
 
     //guards to ensure it stays within number of gears
@@ -238,7 +241,7 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
     }
 
     NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_position.current_gear, epx_configuration.gear_pos[(epx_position.current_gear)]);
-    mpos_update_angle((float)epx_configuration.gear_pos[(epx_position.current_gear)]);
+    mpos_update_angle(true,(float)epx_configuration.gear_pos[(epx_position.current_gear)]);
 }
 
 void data_handler_shift_mode_handler(bool command, bool mode)

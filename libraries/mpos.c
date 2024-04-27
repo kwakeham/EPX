@@ -234,10 +234,16 @@ float angle(int16_t hall_0, int16_t hall_1)
     return(rotation_angle);
 }
 
-void mpos_update_angle(float target_angle)
+void mpos_update_angle(bool direct, float new_target_angle)
 {
-    // ble_angle = target_angle;
-    link_epx_pos->target_angle = target_angle;
+    if(direct)
+    {
+        link_epx_pos->target_angle = new_target_angle;
+    } else
+    {
+        link_epx_pos->target_angle = link_epx_pos->target_angle + new_target_angle;
+    }
+
 }
 
 //This needs a name update TBD
