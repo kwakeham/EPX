@@ -274,6 +274,9 @@ void mpos_motor_drive(void)
                     sleep_count = 0 ; //reset the sleep count last
                     m_registered_pos_save_callback(); //If we have successfully move the derailleur to position, save the postion in case we lose power
                 }
+            } else //if we're outside, like in adjustment mode we don't want to sleep, so if drive strength too high reset the sleep count
+            {
+                sleep_count = 0;
             }
 
         }
