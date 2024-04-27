@@ -83,7 +83,7 @@ void drv8874_drive(int16_t drv8874_duty){
     }
 }
 
-void drv8874_nsleep(bool nsleep_req)
+void drv8874_nsleep(bool nsleep_req) //TODO, this needs to do more than sleep the electrical driver, it should shutdown stuff
 {
     nrf_gpio_pin_write(M_nSleep, nsleep_req);
 }
