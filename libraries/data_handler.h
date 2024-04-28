@@ -27,6 +27,13 @@ void data_handler_force_save(char command);
 
 void data_handler_shift_gear_handler(bool command, int shift_count);
 
+/**
+ * @brief Function that handles long presses and waits for a few before doing somethings
+ * 
+ * @param long_or_not_release true for long, false for release
+ */
+void data_handler_long_mode_handler(bool long_or_not_release);
+
 void data_handler_shift_mode_handler(bool command, bool mode);
 
 void data_handler_command_gear_value(void);

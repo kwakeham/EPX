@@ -42,6 +42,7 @@ bool update_config_flash = false; //Update the falsh memory from the main loop
 bool update_pos_flash = false; //Update the falsh memory from the main loop
 
 bool shift_mode = true; //if true then we are in a gear mode, if false we're in an angle mode 
+uint8_t long_mode_count = 0;
 
 uint32_t dh_debug_counter = 0;
 
@@ -62,6 +63,7 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 		break;
 
 	case MULTI_BTN_EVENT_CH3_PUSH:
+        data_handler_shift_mode_handler(false, true); //temporary, switch back to gear mode
 		break;
 
 	case MULTI_BTN_EVENT_CH4_PUSH:
@@ -76,7 +78,8 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 		break;
 
 	case MULTI_BTN_EVENT_CH3_LONG:
-        data_handler_shift_mode_handler(false, false);
+        // data_handler_shift_mode_handler(false, false);
+        data_handler_long_mode_handler(true);
 		break;
 
 	case MULTI_BTN_EVENT_CH4_LONG:
@@ -89,6 +92,7 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 		break;
 
 	case MULTI_BTN_EVENT_CH3_RELEASE:
+        data_handler_long_mode_handler(false);
 		break;
 
 	case MULTI_BTN_EVENT_CH4_RELEASE:
@@ -272,6 +276,23 @@ void data_handler_shift_mode_handler(bool command, bool mode)
 
     NRF_LOG_INFO(" %s %d" , buff1);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
+}
+
+void data_handler_long_mode_handler(bool long_or_not_release)
+{
+    if (long_or_not_release)
+    {
+        long_mode_count++;
+    } else //reset on release
+    {
+        long_mode_count = 0;
+    }
+
+    if(long_mode_count > 4)
+    {
+        long_mode_count = 0;
+        data_handler_shift_mode_handler(false, false); //change modes
+    }
 }
 
 void data_handler_command_gear_value(void)
