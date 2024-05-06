@@ -278,9 +278,9 @@ void data_handler_shift_mode_handler(bool command, bool mode)
     nus_data_send((uint8_t *)buff1, strlen(buff1));
 }
 
-void data_handler_long_mode_handler(bool long_or_not_release)
+void data_handler_long_mode_handler(bool long_press)
 {
-    if (long_or_not_release)
+    if (long_press)
     {
         long_mode_count++;
     } else //reset on release
