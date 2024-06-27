@@ -77,6 +77,13 @@ float angle(int16_t hall_0, int16_t hall_1);
  */
 void mpos_update_angle(bool direct, float new_target_angle);
 
+/**
+ * @brief 
+ * 
+ * @return float of the current angle
+ */
+float mpos_calculate_angle(void);
+
 void mpos_motor_drive(void);
 
 /**

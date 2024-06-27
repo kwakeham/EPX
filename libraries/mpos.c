@@ -240,12 +240,14 @@ void mpos_update_angle(bool direct, float new_target_angle)
 
 }
 
-void mpos_calculate_angle(void)
+float mpos_calculate_angle(void)
 {
         sin_cos[0] = m_buffer_pool[0]; //move the buffer_pools to the sin_cos storage
         sin_cos[1] = m_buffer_pool[1];
+        mpos_min_max(); // store min max for average offset
         float current_angle = angle(sin_cos[0], sin_cos[1]); //return angle
         current_angle += (link_epx_pos->current_rotations)*360; //find the total current angle
+        return current_angle;
 }
 
 //This needs a name update TBD
@@ -254,9 +256,7 @@ void mpos_motor_drive(void)
     if (update_position) // if we got an updated position
     {
         update_position = false; //unset flag
-        mpos_calculate_angle();
-        mpos_min_max(); // store min max for average offset
-
+        float current_angle = mpos_calculate_angle();
         float drive = pidController((link_epx_pos->target_angle),(float)current_angle);
 
         if (derailleur_moving) //if we are derailleur_moving
