@@ -84,12 +84,6 @@ void mpos_timer_handler(void *p_context)
     mpos_convert(); //do a converstion
 }
 
-void mpos_acquire(void *p_context)
-{
-    mpos_convert(); //do a converstion
-}
-
-
 void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and timers for sampling
 {
     NRF_LOG_INFO("MPOS init");
@@ -140,7 +134,7 @@ void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and t
     err_code = app_timer_create(&m_repeat_action, APP_TIMER_MODE_REPEATED, mpos_timer_handler);
     APP_ERROR_CHECK(err_code);
 
-    err_code = app_timer_start(m_repeat_action, 128, NULL); //This starts the sampling timer for mpos_timer_handler -- 256 hz
+    err_code = app_timer_start(m_repeat_action, 128, NULL); //This starts the sampling timer for mpos_timer_handler -- 32768/128 = 256 hz
     APP_ERROR_CHECK(err_code);
 
     nrf_gpio_cfg_output(S_HALL_EN);
@@ -246,18 +240,23 @@ void mpos_update_angle(bool direct, float new_target_angle)
 
 }
 
+void mpos_calculate_angle(void)
+{
+        sin_cos[0] = m_buffer_pool[0]; //move the buffer_pools to the sin_cos storage
+        sin_cos[1] = m_buffer_pool[1];
+        float current_angle = angle(sin_cos[0], sin_cos[1]); //return angle
+        current_angle += (link_epx_pos->current_rotations)*360; //find the total current angle
+}
+
 //This needs a name update TBD
 void mpos_motor_drive(void)
 {
     if (update_position) // if we got an updated position
     {
         update_position = false; //unset flag
-        sin_cos[0] = m_buffer_pool[0]; //move the buffer_pools to the sin_cos storage
-        sin_cos[1] = m_buffer_pool[1];
-        float current_angle = angle(sin_cos[0], sin_cos[1]); //return angle
+        mpos_calculate_angle();
         mpos_min_max(); // store min max for average offset
 
-        current_angle += (link_epx_pos->current_rotations)*360; //find the total current angle
         float drive = pidController((link_epx_pos->target_angle),(float)current_angle);
 
         if (derailleur_moving) //if we are derailleur_moving
