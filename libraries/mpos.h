@@ -84,12 +84,70 @@ void mpos_update_angle(bool direct, float new_target_angle);
  */
 float mpos_calculate_angle(void);
 
+/**
+ * @brief 
+ * 
+ * @param drive 
+ * @param current_angle 
+ */
+void manage_motor_state(float *drive, float current_angle);
+
+/**
+ * @brief 
+ * 
+ * @param drive 
+ */
+void handle_motor_movement_mode(float *drive);
+
+/**
+ * @brief 
+ * 
+ * @param drive 
+ * @param current_angle 
+ */
+void handle_motor_idle_mode(float *drive, float current_angle);
+
+/**
+ * @brief 
+ * 
+ * @param drive 
+ * @return true 
+ * @return false 
+ */
+bool should_sleep_motor(float drive);
+
+/**
+ * @brief 
+ * 
+ */
+void sleep_motor(void);
+
+/**
+ * @brief 
+ * 
+ */
+void reset_sleep_count(void);
+
+/**
+ * @brief 
+ * 
+ */
+void wake_motor(void);
+
+/**
+ * @brief 
+ * 
+ */
+bool mpos_angle_in_threshold(float current_angle);
+
 void mpos_motor_drive(void);
+
+void move_deraileur(float drive);
 
 /**
  * @brief Returns if the angle is within +/- threshold of Define ANGLE_THRESHOLD
- * 
- * @param ref_angle 
+ *
+ * @param ref_angle
  * @return true ref_angle is less than threshold
  * @return false re_angle greater than threshold
  */
