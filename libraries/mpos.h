@@ -110,15 +110,6 @@ void handle_motor_idle_mode(float *drive, float current_angle);
 /**
  * @brief 
  * 
- * @param drive 
- * @return true 
- * @return false 
- */
-bool should_sleep_motor(float drive);
-
-/**
- * @brief 
- * 
  */
 void sleep_motor(void);
 
@@ -142,7 +133,7 @@ bool mpos_angle_in_threshold(float current_angle);
 
 void mpos_motor_drive(void);
 
-void move_deraileur(float drive);
+void should_sleep_motor(float drive);
 
 /**
  * @brief Returns if the angle is within +/- threshold of Define ANGLE_THRESHOLD

@@ -263,7 +263,7 @@ void mpos_motor_drive(void)
 
     if (derailleur_moving) //if we are derailleur_moving
     {
-        move_deraileur(drive);
+        should_sleep_motor(drive);
     }
     else //not derailleur_moving
     {
@@ -278,25 +278,30 @@ void mpos_motor_drive(void)
     drv8874_drive((int16_t)drive);
 }
 
-void move_deraileur(float drive)
+void should_sleep_motor(float drive)
 {
     if (fabs(drive) < 20.0f) // is our drive strength low
     {
         // if we're basically at the location because drive strength is low
         sleep_count++;                     // sleep counter
-        if (sleep_count > SLEEP_THRESHOLD) // if we're above the threshold then we're ready to sleep the motor driver and leave movement mode
+        if (sleep_count > SLEEP_THRESHOLD) // if we're above the threshold then we successfully moved the derailleur to position and it's stable, ready to sleep the motor driver and leave movement mode
         {
-            NRF_LOG_INFO("Sleep the motor driver"); // debug statement for testing
-            derailleur_moving = false;              // leave moving mode
-            drv8874_nsleep(0);                      // sleep the motor driver
-            sleep_count = 0;                        // reset the sleep count last
-            m_registered_pos_save_callback();       // If we have successfully move the derailleur to position, save the postion in case we lose power
+            sleep_motor();
         }
     }
     else // if we're outside, like in adjustment mode we don't want to sleep, so if drive strength too high reset the sleep count
     {
         sleep_count = 0;
     }
+}
+
+void sleep_motor(void)
+{
+    NRF_LOG_INFO("Sleep the motor driver");
+    derailleur_moving = false;
+    drv8874_nsleep(0);
+    sleep_count = 0;
+    m_registered_pos_save_callback();
 }
 
 bool mpos_angle_in_threshold(float ref_angle)
