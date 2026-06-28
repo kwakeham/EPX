@@ -78,76 +78,33 @@ float angle(int16_t hall_0, int16_t hall_1);
 void mpos_update_angle(bool direct, float new_target_angle);
 
 /**
- * @brief 
- * 
+ * @brief
+ *
  * @return float of the current angle
  */
 float mpos_calculate_angle(void);
 
 /**
- * @brief 
- * 
- * @param drive 
- * @param current_angle 
+ * @brief Run one control tick: read position, drive the motor, advance the
+ *        sleep state machine, and emit telemetry. Call from the main loop.
  */
-void manage_motor_state(float *drive, float current_angle);
-
-/**
- * @brief 
- * 
- * @param drive 
- */
-void handle_motor_movement_mode(float *drive);
-
-/**
- * @brief 
- * 
- * @param drive 
- * @param current_angle 
- */
-void handle_motor_idle_mode(float *drive, float current_angle);
-
-/**
- * @brief 
- * 
- */
-void sleep_motor(void);
-
-/**
- * @brief 
- * 
- */
-void reset_sleep_count(void);
-
-/**
- * @brief 
- * 
- */
-void wake_motor(void);
-
-/**
- * @brief 
- * 
- */
-bool mpos_angle_in_threshold(float current_angle);
-
 void mpos_motor_drive(void);
 
-void should_sleep_motor(float drive);
+/**
+ * @brief Bind the PID controller to its live gains. Call before mpos_init().
+ */
+void mpos_link_gains(const float *kp, const float *ki, const float *kd);
 
 /**
- * @brief Returns if the angle is within +/- threshold of Define ANGLE_THRESHOLD
- *
- * @param ref_angle
- * @return true ref_angle is less than threshold
- * @return false re_angle greater than threshold
+ * @brief Last angle computed by mpos_motor_drive(), with no side effects.
+ *        Used by the calibration commands to capture a reference position.
  */
-bool mpos_angle_in_threshold(float ref_angle);
+float mpos_last_angle(void);
 
 /**
  * @brief link memory so that the mpos will know motor information
- * 
- * @param temp_link_epx_values 
+ *
+ * @param temp_link_epx_values
  */
 void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values);
 

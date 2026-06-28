@@ -15,6 +15,8 @@
 #include "nrf_delay.h"
 #include "drv8874.h"
 #include "PID_controller.h"
+#include "motor_sm.h"
+#include "telemetry.h"
 
 #define NRF_LOG_MODULE_NAME mpos
 #define NRF_LOG_LEVEL       3
@@ -29,11 +31,19 @@ uint32_t mpos_debug_counter = 0;
 #define default_sin_cos_offset 2078 //Half?
 #define default_range 50
 
-#define SLEEP_THRESHOLD 600
-#define ANGLE_THRESHOLD 10
+#define ANGLE_THRESHOLD 10        // position band half-width (degrees)
+#define MPOS_SETTLE_TICKS 64      // ticks in band before sleeping the driver (~0.25 s @ 256 Hz)
+#define MPOS_DT (1.0f / 256.0f)   // control loop period (seconds), matches sample timer
+
 static bool update_position = false; // Flag to know if a new position has been acquired
-static bool derailleur_moving = true;
-static uint16_t sleep_count = 0;
+
+// Control + sleep state
+static pid_ctrl_t       m_pid;
+static motor_sm_t  m_sm;
+static float       m_last_angle = 0.0f;  // last computed angle, for out-of-loop reads
+static const float *m_kp = NULL;     // live gains, bound via mpos_link_gains()
+static const float *m_ki = NULL;
+static const float *m_kd = NULL;
 
 static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, isense order
 
@@ -56,6 +66,18 @@ static float angle_old; // last angle to keep track of if we need to add or subt
 
 static void _default_pos_save_callback(void) {}
 static voidfunctionptr_t  m_registered_pos_save_callback = &_default_pos_save_callback;
+
+void mpos_link_gains(const float *kp, const float *ki, const float *kd)
+{
+    m_kp = kp;
+    m_ki = ki;
+    m_kd = kd;
+}
+
+float mpos_last_angle(void)
+{
+    return m_last_angle;
+}
 
 APP_TIMER_DEF(m_repeat_action);
 
@@ -139,7 +161,11 @@ void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and t
 
     nrf_gpio_cfg_output(S_HALL_EN);
     nrf_gpio_pin_clear(S_HALL_EN);
-   
+
+    // Control + sleep state machine. Gains are bound earlier via mpos_link_gains().
+    pid_init(&m_pid, m_kp, m_ki, m_kd, -400.0f, 400.0f, -2000.0f, 2000.0f);
+    motor_sm_init(&m_sm, (float)ANGLE_THRESHOLD, MPOS_SETTLE_TICKS);
+    telemetry_init();
 }
 
 int16_t mpos_test_convert(void)
@@ -252,62 +278,34 @@ float mpos_calculate_angle(void)
 
 
 
-//This needs a name update TBD
 void mpos_motor_drive(void)
 {
     if (!update_position) return;
-
     update_position = false; //unset flag
-    float current_angle = mpos_calculate_angle();
-    float drive = pidController((link_epx_pos->target_angle),(float)current_angle);
 
-    if (derailleur_moving) //if we are derailleur_moving
+    float current = mpos_calculate_angle();
+    m_last_angle  = current;
+    float target  = (float)link_epx_pos->target_angle;
+
+    // Only run the controller while actively moving; HOLDING outputs zero.
+    float drive = 0.0f;
+    if (m_sm.state == MOTOR_MOVING)
     {
-        should_sleep_motor(drive);
+        drive = pid_update(&m_pid, target, current, MPOS_DT);
     }
-    else //not derailleur_moving
-    {
-        drive = 0.0f;                                // Override and set the drive strength of the motor to 0 just in case
-        if (!mpos_angle_in_threshold(current_angle)) // Power up if the derailleur moved while sleeping for some reason
-        {
-            NRF_LOG_INFO("Wake up the motor driver"); // debug statement for testing
-            derailleur_moving = true;                 // if the drive strength is large then on the next
-            drv8874_nsleep(1);                        // wake the motor driver since the next time around we'll have to drive it.
-        }
-    }
+
+    // Advance the sleep state machine and apply whatever side effects it asks for.
+    motor_action_t act;
+    bool driving = motor_sm_step(&m_sm, target, current, &act);
+    if (!driving) drive = 0.0f;
+
+    if (act.pid_reset)      pid_reset(&m_pid, current);
+    if (act.nsleep_changed) drv8874_nsleep(act.nsleep_value);
+    if (act.save_position)  m_registered_pos_save_callback();
+
     drv8874_drive((int16_t)drive);
-}
 
-void should_sleep_motor(float drive)
-{
-    if (fabs(drive) < 20.0f) // is our drive strength low
-    {
-        // if we're basically at the location because drive strength is low
-        sleep_count++;                     // sleep counter
-        if (sleep_count > SLEEP_THRESHOLD) // if we're above the threshold then we successfully moved the derailleur to position and it's stable, ready to sleep the motor driver and leave movement mode
-        {
-            sleep_motor();
-        }
-    }
-    else // if we're outside, like in adjustment mode we don't want to sleep, so if drive strength too high reset the sleep count
-    {
-        sleep_count = 0;
-    }
-}
-
-void sleep_motor(void)
-{
-    NRF_LOG_INFO("Sleep the motor driver");
-    derailleur_moving = false;
-    drv8874_nsleep(0);
-    sleep_count = 0;
-    m_registered_pos_save_callback();
-}
-
-bool mpos_angle_in_threshold(float ref_angle)
-{   
-    int16_t angle_difference = link_epx_pos->target_angle - ref_angle;
-    return (abs(angle_difference) < ANGLE_THRESHOLD); //
+    telemetry_tick(target, current, drive, m_pid.integral, (int)m_sm.state);
 }
 
 void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)

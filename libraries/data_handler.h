@@ -38,6 +38,12 @@ void data_handler_shift_mode_handler(bool command, bool mode);
 
 void data_handler_command_gear_value(void);
 
+/** Echo the stored gear positions over the active output. */
+void data_handler_command_gear_value_print(void);
+
+/** Interpolate all gears from the two captured references (gl/gh) and persist. */
+void data_handler_compute_gears(void);
+
 void data_handler_show_gains(void);
 
 void data_handler_sch_execute(void);

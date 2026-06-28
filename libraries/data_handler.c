@@ -14,7 +14,8 @@
 #include <string.h>
 #include "titan_mem.h"
 #include "mpos.h"
-#include "PID_controller.h"
+#include "gears.h"
+#include "telemetry.h"
 
 #define NRF_LOG_MODULE_NAME datahandler
 #define NRF_LOG_LEVEL       3
@@ -27,7 +28,15 @@ NRF_LOG_MODULE_REGISTER();
 #define CHAR_LENGTH 10
 #define DATAOUTENABLE
 
-static char command_message[10] = {}; 
+// Two-point gear calibration: capture these two gears, interpolate the rest.
+// Indices are 0-based (gear 2 -> index 1, gear 10 -> index 9).
+#define GEAR_REF_LO_IDX 1
+#define GEAR_REF_HI_IDX 9
+
+static int32_t ref_lo = 0, ref_hi = 0;
+static bool    ref_lo_set = false, ref_hi_set = false;
+
+static char command_message[10] = {};
 
 bool data_process_command = false;
 
@@ -172,11 +181,16 @@ void data_handler_command_processor(void)
             mpos_update_angle(true, data_handler_command_float_return(1));
         }
         break;
-        
+
+    case 0x79: //y Telemetry stream: y1 = on, y0 = off
+        NRF_LOG_INFO("little y");
+        telemetry_set_enabled(command_message[1] == '1');
+        break;
+
     default:
         break;
     }
-    
+
 }
 
 float data_handler_command_float_return(uint8_t offset)
@@ -347,16 +361,62 @@ void data_handler_command_gear_value(void)
         epx_configuration.num_gears = data_handler_command_number_return(2);
         NRF_LOG_INFO(" %d" , epx_configuration.num_gears);
         break;
+    case 0x6C: //l capture current angle as the LOW reference (gear 2)
+        update_config_flash = false; //reference is RAM-only until interpolation runs
+        ref_lo = (int32_t)mpos_last_angle();
+        ref_lo_set = true;
+        sprintf(buff1, "Low ref (gear %d): %ld", GEAR_REF_LO_IDX + 1, ref_lo);
+        nus_data_send((uint8_t *)buff1, strlen(buff1));
+        return;
+    case 0x68: //h capture current angle as the HIGH reference (gear 10)
+        update_config_flash = false;
+        ref_hi = (int32_t)mpos_last_angle();
+        ref_hi_set = true;
+        sprintf(buff1, "High ref (gear %d): %ld", GEAR_REF_HI_IDX + 1, ref_hi);
+        nus_data_send((uint8_t *)buff1, strlen(buff1));
+        return;
+    case 0x69: //i interpolate all gears from the two captured references
+        data_handler_compute_gears();
+        return;
     default:
         update_config_flash = false; //if it wasn't the other cases, don't update the flash memory
         break;
     }
+    data_handler_command_gear_value_print();
+}
+
+void data_handler_command_gear_value_print(void)
+{
     sprintf(buff1, "Gear 1: %ld, %ld, %ld, %ld, %ld, %ld",epx_configuration.gear_pos[0], epx_configuration.gear_pos[1], epx_configuration.gear_pos[2], epx_configuration.gear_pos[3], epx_configuration.gear_pos[4], epx_configuration.gear_pos[5]);
     sprintf(buff2, "Gear 7: %ld, %ld, %ld, %ld, %ld, %ld",epx_configuration.gear_pos[6], epx_configuration.gear_pos[7], epx_configuration.gear_pos[8], epx_configuration.gear_pos[9], epx_configuration.gear_pos[10], epx_configuration.gear_pos[11]);
 
     NRF_LOG_INFO(" %s %d" , buff1);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
     nus_data_send((uint8_t *)buff2, strlen(buff2));
+}
+
+void data_handler_compute_gears(void)
+{
+    if (!ref_lo_set || !ref_hi_set)
+    {
+        sprintf(buff1, "Capture gl and gh first");
+        nus_data_send((uint8_t *)buff1, strlen(buff1));
+        return;
+    }
+
+    bool ok = gears_interpolate(epx_configuration.gear_pos,
+                                epx_configuration.num_gears,
+                                GEAR_REF_LO_IDX, ref_lo,
+                                GEAR_REF_HI_IDX, ref_hi);
+    if (!ok)
+    {
+        sprintf(buff1, "Interp failed (num_gears %ld?)", epx_configuration.num_gears);
+        nus_data_send((uint8_t *)buff1, strlen(buff1));
+        return;
+    }
+
+    update_config_flash = true; // persist the computed positions
+    data_handler_command_gear_value_print();
 }
 
 void data_handler_show_gains(void)
@@ -396,7 +456,8 @@ void data_handler_get_flash_values(void)
 {
     epx_configuration = tm_fds_epx_config(); //get configuration from titanmem
     epx_position = tm_fds_epx_position(); //get position data from titanmem
-    pid_link_memory(&epx_configuration); //link the local value to the PID so that the PID isn't carrying it's own values
+    //link the live gains to the PID (owned by mpos) so it reads the stored config directly
+    mpos_link_gains(&epx_configuration.Kp, &epx_configuration.Ki, &epx_configuration.Kd);
     mpos_link_memory(&epx_position);//link the local value to the mpos controller
 }
 

@@ -55,6 +55,7 @@
 #include "ble_cus.h"
 
 #include "data_handler.h"
+#include "console.h"
 
 
 #define DEVICE_NAME                     "EPX"                         /**< Name of device. Will be included in the advertising data. */
@@ -806,6 +807,11 @@ static void bsp_event_handler(bsp_event_t event)
 void nus_data_send(uint8_t *data_array, uint16_t length)
 {
     uint32_t       err_code;
+
+    // Always echo replies to the RTT console so the dev kit can be driven
+    // without a BLE connection.
+    console_print(data_array, length);
+
     err_code = ble_nus_data_send(&m_nus, data_array, &length, m_conn_handle);
     if ((err_code != NRF_ERROR_INVALID_STATE) && (err_code != NRF_ERROR_RESOURCES) && (err_code != NRF_ERROR_NOT_FOUND))
     {

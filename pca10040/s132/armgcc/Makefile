@@ -104,6 +104,10 @@ SRC_FILES += \
   $(PROJ_DIR)/titan_mem.c \
   $(PROJ_DIR)/libraries/mpos.c \
   $(PROJ_DIR)/libraries/PID_controller.c \
+  $(PROJ_DIR)/libraries/motor_sm.c \
+  $(PROJ_DIR)/libraries/gears.c \
+  $(PROJ_DIR)/libraries/telemetry.c \
+  $(PROJ_DIR)/libraries/console.c \
   $(PROJ_DIR)/libraries/data_handler.c \
   $(PROJ_DIR)/libraries/multi_btn.c \
   $(PROJ_DIR)/drivers/drv8874.c \
