@@ -44,6 +44,12 @@ void data_handler_command_gear_value_print(void);
 /** Interpolate all gears from the two captured references (gl/gh) and persist. */
 void data_handler_compute_gears(void);
 
+/** Set/list overshift+dwell: "o <gear> <front> <dir> <overshift> <dwell_ms>". */
+void data_handler_overshift_command(void);
+
+/** Fault command: 'x' clear, 'xl <n>' ISENSE limit, 'xc <n>' fault count. */
+void data_handler_fault_command(void);
+
 void data_handler_show_gains(void);
 
 void data_handler_sch_execute(void);

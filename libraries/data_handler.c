@@ -25,18 +25,16 @@
 NRF_LOG_MODULE_REGISTER();
 
 
-#define CHAR_LENGTH 10
+#define CMD_LENGTH 48     // command line buffer (multi-arg commands like 'o')
 #define DATAOUTENABLE
 
-// Two-point gear calibration: capture these two gears, interpolate the rest.
-// Indices are 0-based (gear 2 -> index 1, gear 10 -> index 9).
-#define GEAR_REF_LO_IDX 1
-#define GEAR_REF_HI_IDX 9
+// Two-point gear calibration reference indices come from derailleur.h
+// (GEAR_REF_LO_IDX / GEAR_REF_HI_IDX), pulled in via titan_mem.h.
 
 static int32_t ref_lo = 0, ref_hi = 0;
 static bool    ref_lo_set = false, ref_hi_set = false;
 
-static char command_message[10] = {};
+static char command_message[CMD_LENGTH] = {};
 
 bool data_process_command = false;
 
@@ -115,6 +113,7 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 
 void data_handler_command(const char* p_chars, uint32_t length)
 {
+    if (length >= sizeof(command_message)) length = sizeof(command_message) - 1;
     memset(command_message, 0, sizeof(command_message));
     memcpy(command_message, p_chars, length);
     data_process_command = true;
@@ -182,9 +181,27 @@ void data_handler_command_processor(void)
         }
         break;
 
-    case 0x79: //y Telemetry stream: y1 = on, y0 = off
+    case 0x79: //y Telemetry stream: y<divider> (y0 off, y1 full rate, y4 ~64Hz)
         NRF_LOG_INFO("little y");
-        telemetry_set_enabled(command_message[1] == '1');
+        telemetry_set_rate((uint16_t)data_handler_command_number_return(1));
+        break;
+
+    case 0x6F: //o Overshift/dwell: "o <gear> <front> <dir> <overshift> <dwell_ms>"
+        NRF_LOG_INFO("little o");
+        data_handler_overshift_command();
+        break;
+
+    case 0x78: //x Fault: 'x' clear, 'xl <n>' set ISENSE limit, 'xc <n>' set count
+        NRF_LOG_INFO("little x");
+        data_handler_fault_command();
+        break;
+
+    case 0x62: //b Front-derailleur position select: b0 / b1 (provision)
+        NRF_LOG_INFO("little b");
+        epx_position.current_front = (int8_t)data_handler_command_number_return(1);
+        if (epx_position.current_front < 0) epx_position.current_front = 0;
+        if (epx_position.current_front >= NUM_FRONT_POS) epx_position.current_front = NUM_FRONT_POS - 1;
+        update_pos_flash = true;
         break;
 
     default:
@@ -195,17 +212,19 @@ void data_handler_command_processor(void)
 
 float data_handler_command_float_return(uint8_t offset)
 {
-    char temp_array[CHAR_LENGTH];
-    strncpy(temp_array, command_message+offset, sizeof(command_message)-1);
+    char temp_array[CMD_LENGTH];
+    strncpy(temp_array, command_message+offset, sizeof(temp_array)-1);
+    temp_array[sizeof(temp_array)-1] = '\0';
     float calibration_coefficient = strtof(temp_array, NULL);
     return(calibration_coefficient);
 }
 
 int32_t data_handler_command_number_return(uint8_t offset)
 {
-    char temp_array[CHAR_LENGTH];
+    char temp_array[CMD_LENGTH];
     int32_t x;
-    strncpy(temp_array, command_message+offset, sizeof(command_message)-1);
+    strncpy(temp_array, command_message+offset, sizeof(temp_array)-1);
+    temp_array[sizeof(temp_array)-1] = '\0';
     x = atoi(temp_array);
     NRF_LOG_INFO("value, %ld", x);
     return(x);
@@ -224,6 +243,8 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
 {
     if(shift_mode) //check if we're in shift mode
     {
+        int old_gear = epx_position.current_gear;
+
         if (command) //if there is a command then process and decode
         {
             switch (command_message[1])
@@ -254,8 +275,28 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
             epx_position.current_gear = 0;
         }
 
-        NRF_LOG_INFO("Current gear: %ld Angle: %ld",epx_position.current_gear, epx_configuration.gear_pos[(epx_position.current_gear)]);
-        mpos_update_angle(true,(float)epx_configuration.gear_pos[(epx_position.current_gear)]);
+        int new_gear = epx_position.current_gear;
+        int32_t final_pos = epx_configuration.gear_pos[new_gear];
+
+        // Look up overshift for this gear / front position / direction; apply it
+        // in the direction of travel. overshift==0 => plain move, no dwell.
+        int16_t  signed_overshift = 0;
+        uint16_t dwell_ticks      = 0;
+        int front = epx_position.current_front;
+        if (new_gear < NUM_REAR_GEARS && front >= 0 && front < NUM_FRONT_POS && new_gear != old_gear)
+        {
+            int dir = (new_gear > old_gear) ? DIR_UP : DIR_DOWN;
+            overshift_t os = epx_configuration.rear_overshift[new_gear][front][dir];
+            if (os.overshift != 0)
+            {
+                int32_t prev_pos = epx_configuration.gear_pos[old_gear];
+                signed_overshift = (final_pos >= prev_pos) ? os.overshift : (int16_t)(-os.overshift);
+                dwell_ticks      = (uint16_t)(((int32_t)os.dwell_ms * 256) / 1000);
+            }
+        }
+
+        NRF_LOG_INFO("Gear %d Angle %ld overshift %d", new_gear, final_pos, signed_overshift);
+        mpos_shift_to(final_pos, signed_overshift, dwell_ticks);
     } else //if we're in angle mode
     {
         mpos_update_angle(false, (float)shift_count*5);
@@ -404,19 +445,86 @@ void data_handler_compute_gears(void)
         return;
     }
 
-    bool ok = gears_interpolate(epx_configuration.gear_pos,
+    // Affine-fit the (non-linear) nominal cog profile through the two captures.
+    bool ok = gears_fit_profile(epx_configuration.gear_pos,
                                 epx_configuration.num_gears,
+                                gear_profile_nominal,
                                 GEAR_REF_LO_IDX, ref_lo,
                                 GEAR_REF_HI_IDX, ref_hi);
     if (!ok)
     {
-        sprintf(buff1, "Interp failed (num_gears %ld?)", epx_configuration.num_gears);
+        sprintf(buff1, "Fit failed (num_gears %ld?)", epx_configuration.num_gears);
         nus_data_send((uint8_t *)buff1, strlen(buff1));
         return;
     }
 
+    // Persist the captured references so a re-fit needs no re-jog.
+    epx_configuration.ref_lo     = ref_lo;
+    epx_configuration.ref_hi     = ref_hi;
+    epx_configuration.ref_lo_idx = GEAR_REF_LO_IDX;
+    epx_configuration.ref_hi_idx = GEAR_REF_HI_IDX;
+
     update_config_flash = true; // persist the computed positions
     data_handler_command_gear_value_print();
+}
+
+void data_handler_overshift_command(void)
+{
+    int g = 0, f = 0, d = 0, over = 0, dwell = 0;
+    int got = sscanf(command_message + 1, "%d %d %d %d %d", &g, &f, &d, &over, &dwell);
+
+    if (got < 5) // not a full set => list the table for the current front position
+    {
+        int front = epx_position.current_front;
+        sprintf(buff1, "Overshift front %d (gear: up/dn over,dwell):", front);
+        nus_data_send((uint8_t *)buff1, strlen(buff1));
+        for (int i = 0; i < NUM_REAR_GEARS; i++)
+        {
+            overshift_t u = epx_configuration.rear_overshift[i][front][DIR_UP];
+            overshift_t dn = epx_configuration.rear_overshift[i][front][DIR_DOWN];
+            sprintf(buff1, "g%d: u %d,%d  d %d,%d", i + 1,
+                    u.overshift, u.dwell_ms, dn.overshift, dn.dwell_ms);
+            nus_data_send((uint8_t *)buff1, strlen(buff1));
+        }
+        return;
+    }
+
+    int gi = g - 1; // command is 1-based gear
+    if (gi < 0 || gi >= NUM_REAR_GEARS || f < 0 || f >= NUM_FRONT_POS || d < 0 || d >= NUM_DIRS)
+    {
+        sprintf(buff1, "Bad o args: gear 1-%d front 0-%d dir 0/1", NUM_REAR_GEARS, NUM_FRONT_POS - 1);
+        nus_data_send((uint8_t *)buff1, strlen(buff1));
+        return;
+    }
+
+    epx_configuration.rear_overshift[gi][f][d].overshift = (int16_t)over;
+    epx_configuration.rear_overshift[gi][f][d].dwell_ms  = (int16_t)dwell;
+    update_config_flash = true;
+
+    sprintf(buff1, "Set g%d f%d %s over %d dwell %d", g, f, d ? "dn" : "up", over, dwell);
+    nus_data_send((uint8_t *)buff1, strlen(buff1));
+}
+
+void data_handler_fault_command(void)
+{
+    switch (command_message[1])
+    {
+    case 0x6C: //l set ISENSE limit (raw counts)
+        epx_configuration.isense_limit = (int16_t)data_handler_command_number_return(2);
+        update_config_flash = true;
+        sprintf(buff1, "ISENSE limit %d", epx_configuration.isense_limit);
+        break;
+    case 0x63: //c set fault sample count
+        epx_configuration.isense_fault_count = (uint16_t)data_handler_command_number_return(2);
+        update_config_flash = true;
+        sprintf(buff1, "ISENSE count %u", epx_configuration.isense_fault_count);
+        break;
+    default: //clear the latched fault
+        mpos_clear_fault();
+        sprintf(buff1, "Fault cleared");
+        break;
+    }
+    nus_data_send((uint8_t *)buff1, strlen(buff1));
 }
 
 void data_handler_show_gains(void)
@@ -458,6 +566,7 @@ void data_handler_get_flash_values(void)
     epx_position = tm_fds_epx_position(); //get position data from titanmem
     //link the live gains to the PID (owned by mpos) so it reads the stored config directly
     mpos_link_gains(&epx_configuration.Kp, &epx_configuration.Ki, &epx_configuration.Kd);
+    mpos_link_overcurrent(&epx_configuration.isense_limit, &epx_configuration.isense_fault_count);
     mpos_link_memory(&epx_position);//link the local value to the mpos controller
 }
 

@@ -11,11 +11,13 @@
 
 #include "mpos.h"
 #include "boards.h"
+#include "nrf_gpio.h"
 #include "app_timer.h"
 #include "nrf_delay.h"
 #include "drv8874.h"
 #include "PID_controller.h"
 #include "motor_sm.h"
+#include "shift_seq.h"
 #include "telemetry.h"
 
 #define NRF_LOG_MODULE_NAME mpos
@@ -33,17 +35,28 @@ uint32_t mpos_debug_counter = 0;
 
 #define ANGLE_THRESHOLD 10        // position band half-width (degrees)
 #define MPOS_SETTLE_TICKS 64      // ticks in band before sleeping the driver (~0.25 s @ 256 Hz)
+#define MPOS_ARRIVE_TICKS 8       // ticks in band before a shift sub-target counts as reached
 #define MPOS_DT (1.0f / 256.0f)   // control loop period (seconds), matches sample timer
 
 static bool update_position = false; // Flag to know if a new position has been acquired
 
 // Control + sleep state
-static pid_ctrl_t       m_pid;
+static pid_ctrl_t  m_pid;
 static motor_sm_t  m_sm;
-static float       m_last_angle = 0.0f;  // last computed angle, for out-of-loop reads
-static const float *m_kp = NULL;     // live gains, bound via mpos_link_gains()
+static shift_seq_t m_seq;                 // overshift/dwell sequencer
+static int32_t     m_subtarget = 0;       // position the PID currently chases
+static uint16_t    m_arrive_count = 0;    // ticks in band at the current sub-target
+static float       m_last_angle = 0.0f;   // last computed angle, for out-of-loop reads
+static const float *m_kp = NULL;          // live gains, bound via mpos_link_gains()
 static const float *m_ki = NULL;
 static const float *m_kd = NULL;
+
+// Overcurrent protection
+static const int16_t  *m_isense_limit = NULL;   // live limit, bound via mpos_link_overcurrent()
+static const uint16_t *m_isense_count = NULL;
+static uint16_t        m_over_count = 0;         // consecutive over-limit samples
+static int16_t         m_isense = 0;             // last raw current-sense count
+static bool            m_fault = false;          // latched overcurrent/driver fault
 
 static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, isense order
 
@@ -72,6 +85,56 @@ void mpos_link_gains(const float *kp, const float *ki, const float *kd)
     m_kp = kp;
     m_ki = ki;
     m_kd = kd;
+}
+
+void mpos_link_overcurrent(const int16_t *limit, const uint16_t *count)
+{
+    m_isense_limit = limit;
+    m_isense_count = count;
+}
+
+int16_t mpos_isense(void)
+{
+    return m_isense;
+}
+
+bool mpos_is_faulted(void)
+{
+    return m_fault;
+}
+
+void mpos_clear_fault(void)
+{
+    m_fault      = false;
+    m_over_count = 0;
+}
+
+// Latch a fault if ISENSE exceeds the configured limit for enough consecutive
+// samples, or the DRV8874 nFault line is asserted (active low). Returns m_fault.
+static bool mpos_check_fault(void)
+{
+    if (m_isense_limit != NULL && *m_isense_limit > 0 && m_isense > *m_isense_limit)
+    {
+        m_over_count++;
+        uint16_t limit_count = (m_isense_count != NULL) ? *m_isense_count : 1;
+        if (m_over_count >= limit_count)
+        {
+            if (!m_fault) NRF_LOG_WARNING("FAULT overcurrent: isense %d", m_isense);
+            m_fault = true;
+        }
+    }
+    else
+    {
+        m_over_count = 0;
+    }
+
+    if (nrf_gpio_pin_read(M_nFault) == 0) // DRV8874 fault output, active low
+    {
+        if (!m_fault) NRF_LOG_WARNING("FAULT driver nFault asserted");
+        m_fault = true;
+    }
+
+    return m_fault;
 }
 
 float mpos_last_angle(void)
@@ -162,9 +225,14 @@ void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and t
     nrf_gpio_cfg_output(S_HALL_EN);
     nrf_gpio_pin_clear(S_HALL_EN);
 
+    // DRV8874 fault output (active low) as input for the overcurrent guard.
+    nrf_gpio_cfg_input(M_nFault, NRF_GPIO_PIN_PULLUP);
+
     // Control + sleep state machine. Gains are bound earlier via mpos_link_gains().
     pid_init(&m_pid, m_kp, m_ki, m_kd, -400.0f, 400.0f, -2000.0f, 2000.0f);
     motor_sm_init(&m_sm, (float)ANGLE_THRESHOLD, MPOS_SETTLE_TICKS);
+    shift_seq_init(&m_seq);
+    m_subtarget = link_epx_pos->target_angle;  // chase the restored target on boot
     telemetry_init();
 }
 
@@ -256,6 +324,8 @@ float angle(int16_t hall_0, int16_t hall_1)
 
 void mpos_update_angle(bool direct, float new_target_angle)
 {
+    if (m_fault) return; // motion inhibited until the fault is cleared
+
     if(direct)
     {
         link_epx_pos->target_angle = new_target_angle;
@@ -264,12 +334,29 @@ void mpos_update_angle(bool direct, float new_target_angle)
         link_epx_pos->target_angle = link_epx_pos->target_angle + new_target_angle;
     }
 
+    // A direct angle move has no overshift sequence: chase the target directly.
+    shift_seq_init(&m_seq);
+    m_subtarget    = link_epx_pos->target_angle;
+    m_arrive_count = 0;
+}
+
+void mpos_shift_to(int32_t final_pos, int16_t signed_overshift, uint16_t dwell_ticks)
+{
+    if (m_fault) return; // motion inhibited until the fault is cleared
+
+    link_epx_pos->target_angle = final_pos; // persist the resting position
+
+    int32_t first_target;
+    shift_seq_start(&m_seq, final_pos, signed_overshift, dwell_ticks, &first_target);
+    m_subtarget    = first_target;
+    m_arrive_count = 0;
 }
 
 float mpos_calculate_angle(void)
 {
         sin_cos[0] = m_buffer_pool[0]; //move the buffer_pools to the sin_cos storage
         sin_cos[1] = m_buffer_pool[1];
+        m_isense   = m_buffer_pool[2]; //current sense (AIN1), used by the overcurrent guard
         mpos_min_max(); // store min max for average offset
         float current_angle = angle(sin_cos[0], sin_cos[1]); //return angle
         current_angle += (link_epx_pos->current_rotations)*360; //find the total current angle
@@ -285,27 +372,75 @@ void mpos_motor_drive(void)
 
     float current = mpos_calculate_angle();
     m_last_angle  = current;
-    float target  = (float)link_epx_pos->target_angle;
 
-    // Only run the controller while actively moving; HOLDING outputs zero.
-    float drive = 0.0f;
-    if (m_sm.state == MOTOR_MOVING)
+    // Overcurrent guard: if faulted, kill drive, sleep the driver, abort any
+    // shift, and inhibit motion until the fault is cleared.
+    if (mpos_check_fault())
     {
-        drive = pid_update(&m_pid, target, current, MPOS_DT);
+        drv8874_drive(0);
+        drv8874_nsleep(0);
+        shift_seq_init(&m_seq);
+        telemetry_tick((float)m_subtarget, current, 0.0f, m_pid.integral, (int)m_sm.state, m_isense, true);
+        return;
     }
 
-    // Advance the sleep state machine and apply whatever side effects it asks for.
-    motor_action_t act;
-    bool driving = motor_sm_step(&m_sm, target, current, &act);
-    if (!driving) drive = 0.0f;
+    // Track arrival at the current sub-target (in-band, debounced).
+    if (fabsf((float)m_subtarget - current) < (float)ANGLE_THRESHOLD)
+    {
+        if (m_arrive_count < 0xFFFF) m_arrive_count++;
+    }
+    else
+    {
+        m_arrive_count = 0;
+    }
+    bool arrived = (m_arrive_count >= MPOS_ARRIVE_TICKS);
 
-    if (act.pid_reset)      pid_reset(&m_pid, current);
-    if (act.nsleep_changed) drv8874_nsleep(act.nsleep_value);
-    if (act.save_position)  m_registered_pos_save_callback();
+    // Advance the overshift/dwell sequence; it may retarget us to the final gear.
+    if (shift_seq_active(&m_seq))
+    {
+        int32_t next_target;
+        if (shift_seq_step(&m_seq, arrived, &next_target))
+        {
+            m_subtarget    = next_target;
+            m_arrive_count = 0;
+        }
+    }
+
+    float target = (float)m_subtarget;
+    float drive  = 0.0f;
+
+    if (shift_seq_active(&m_seq))
+    {
+        // While sequencing, keep driving to the sub-target and never sleep.
+        if (m_sm.state != MOTOR_MOVING)
+        {
+            m_sm.state = MOTOR_MOVING;
+            drv8874_nsleep(1);
+            pid_reset(&m_pid, current);
+        }
+        m_sm.settle_count = 0;
+        drive = pid_update(&m_pid, target, current, MPOS_DT);
+    }
+    else
+    {
+        // Idle/done: normal PID + sleep state machine manages the driver.
+        if (m_sm.state == MOTOR_MOVING)
+        {
+            drive = pid_update(&m_pid, target, current, MPOS_DT);
+        }
+
+        motor_action_t act;
+        bool driving = motor_sm_step(&m_sm, target, current, &act);
+        if (!driving) drive = 0.0f;
+
+        if (act.pid_reset)      pid_reset(&m_pid, current);
+        if (act.nsleep_changed) drv8874_nsleep(act.nsleep_value);
+        if (act.save_position)  m_registered_pos_save_callback();
+    }
 
     drv8874_drive((int16_t)drive);
 
-    telemetry_tick(target, current, drive, m_pid.integral, (int)m_sm.state);
+    telemetry_tick(target, current, drive, m_pid.integral, (int)m_sm.state, m_isense, m_fault);
 }
 
 void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)

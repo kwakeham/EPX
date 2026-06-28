@@ -96,6 +96,28 @@ void mpos_motor_drive(void);
 void mpos_link_gains(const float *kp, const float *ki, const float *kd);
 
 /**
+ * @brief Bind the overcurrent guard to the live ISENSE limit / fault-count.
+ */
+void mpos_link_overcurrent(const int16_t *limit, const uint16_t *count);
+
+/**
+ * @brief Shift to a gear with optional overtravel then dwell then settle-back.
+ * @param final_pos        resting position for the gear (persisted as target).
+ * @param signed_overshift overtravel in the shift direction; 0 = direct, no dwell.
+ * @param dwell_ticks      ticks to dwell at the overshift waypoint.
+ */
+void mpos_shift_to(int32_t final_pos, int16_t signed_overshift, uint16_t dwell_ticks);
+
+/** Last raw current-sense (ISENSE/AIN1) count. */
+int16_t mpos_isense(void);
+
+/** True while an overcurrent/driver fault is latched (motion inhibited). */
+bool mpos_is_faulted(void);
+
+/** Clear a latched fault and re-enable motion. */
+void mpos_clear_fault(void);
+
+/**
  * @brief Last angle computed by mpos_motor_drive(), with no side effects.
  *        Used by the calibration commands to capture a reference position.
  */

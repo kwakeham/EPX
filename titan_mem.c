@@ -78,27 +78,28 @@ static struct
     bool pending;       //!< Waiting for an fds FDS_EVT_DEL_RECORD event, to delete the next record.
 } m_delete_all;
 
+/* Default configuration. Used both to seed a fresh chip and to reset on a
+ * config-version mismatch. Unlisted fields (gear_pos, gains, overshift arrays,
+ * front provisioning) default to zero. */
+#define EPX_CONFIG_DEFAULTS                 \
+{                                           \
+    .config_version     = CONFIG_VERSION,   \
+    .num_gears          = NUM_REAR_GEARS,   \
+    .ref_lo_idx         = GEAR_REF_LO_IDX,  \
+    .ref_hi_idx         = GEAR_REF_HI_IDX,  \
+    .isense_limit       = 2000,             \
+    .isense_fault_count = 8,                \
+}
+
 /* Configuration data. */
-static epx_configuration_t m_epx_cfg =
-{
-    .num_gears = 0,
-    .gear_pos = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-
-    .Kp = 0.0f,
-    .Ki = 0.0f,
-    .Kd = 0.0f,
-
-    .sin_min = 0,
-    .sin_max = 0,
-    .cos_min = 0,
-    .cos_max = 0,
-};
+static epx_configuration_t m_epx_cfg = EPX_CONFIG_DEFAULTS;
 
 static epx_position_configuration_t m_epx_position_cfg =
 {
     .current_rotations = 0,
     .target_angle = 0,
     .current_gear = 0,
+    .current_front = 0,
 
     .upshifts = 0,
     .downshifts = 0,
@@ -312,6 +313,18 @@ void tm_fds_config_init()
         /* Close the record when done reading. */
         rc = fds_record_close(&desc);
         APP_ERROR_CHECK(rc);
+
+        /* Migration: if the stored layout/version differs, reset to defaults and
+         * persist. The version field is first, so an older (smaller) record's
+         * first word will not match CONFIG_VERSION. */
+        if (m_epx_cfg.config_version != CONFIG_VERSION)
+        {
+            NRF_LOG_WARNING("Config version %u != %u; resetting to defaults",
+                            m_epx_cfg.config_version, CONFIG_VERSION);
+            m_epx_cfg = (epx_configuration_t)EPX_CONFIG_DEFAULTS;
+            rc = fds_record_update(&desc, &m_epx_record);
+            APP_ERROR_CHECK(rc);
+        }
     }
     else
     {

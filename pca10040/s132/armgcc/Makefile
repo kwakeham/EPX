@@ -32,6 +32,7 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/scheduler/app_scheduler.c \
   $(SDK_ROOT)/components/libraries/timer/app_timer2.c \
   $(SDK_ROOT)/components/libraries/uart/app_uart_fifo.c \
+  $(SDK_ROOT)/components/libraries/fifo/app_fifo.c \
   $(SDK_ROOT)/components/libraries/util/app_util_platform.c \
   $(SDK_ROOT)/components/libraries/crc16/crc16.c \
   $(SDK_ROOT)/components/libraries/timer/drv_rtc.c \
@@ -106,6 +107,8 @@ SRC_FILES += \
   $(PROJ_DIR)/libraries/PID_controller.c \
   $(PROJ_DIR)/libraries/motor_sm.c \
   $(PROJ_DIR)/libraries/gears.c \
+  $(PROJ_DIR)/libraries/derailleur.c \
+  $(PROJ_DIR)/libraries/shift_seq.c \
   $(PROJ_DIR)/libraries/telemetry.c \
   $(PROJ_DIR)/libraries/console.c \
   $(PROJ_DIR)/libraries/data_handler.c \
@@ -128,6 +131,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/softdevice/s132/headers/nrf52 \
   $(SDK_ROOT)/components/libraries/util \
   $(SDK_ROOT)/components/libraries/uart \
+  $(SDK_ROOT)/components/libraries/fifo \
   ../config \
   $(SDK_ROOT)/components/ble/common \
   $(SDK_ROOT)/components/libraries/balloc \
@@ -281,10 +285,13 @@ flash_softdevice:
 	nrfjprog -f nrf52 --program $(SDK_ROOT)/components/softdevice/s132/hex/s132_nrf52_7.2.0_softdevice.hex --sectorerase
 	nrfjprog -f nrf52 --reset
 
-# Flash the program and the DFU settings (works if the bootloader is there)
+# Flash the program WITH matching bootloader settings. REQUIRED on this board:
+# a buttonless-DFU bootloader is present (UICR -> 0x78000) and will refuse to
+# launch an app flashed by plain `make flash` (settings CRC mismatch). Uses the
+# modular nrfutil (nrf5sdk-tools) and settings version 2 (nRF5 SDK 17).
 flash_dfu: $(OUTPUT_DIRECTORY)/nrf52832_xxaa.hex
 	@echo Generating DFU settings...
-	nrfutil settings generate --family NRF52 --application-version 1 --application $(OUTPUT_DIRECTORY)/nrf52832_xxaa.hex  --bootloader-version 1 --bl-settings-version 1 settings_dfu.hex
+	nrfutil nrf5sdk-tools settings generate --family NRF52 --application-version 1 --application $(OUTPUT_DIRECTORY)/nrf52832_xxaa.hex --bootloader-version 1 --bl-settings-version 2 settings_dfu.hex
 	mergehex --merge $(OUTPUT_DIRECTORY)/nrf52832_xxaa.hex settings_dfu.hex --output app_dfu_settings.hex
 	@echo Flashing: $<
 	nrfjprog --program app_dfu_settings.hex -f nrf52 --sectorerase

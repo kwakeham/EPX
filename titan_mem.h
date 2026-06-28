@@ -13,16 +13,29 @@
 #include "app_timer.h"
 #include "nrf_fstorage_sd.h"
 #include "nrf_fstorage.h"
+#include "derailleur.h"
+
+/* Bump when the layout/semantics of epx_configuration_t change. On load, a
+ * mismatch triggers a reset to defaults (see tm_fds_config_init). */
+#define CONFIG_VERSION 2
 
 /* A dummy structure to save in flash. */
 typedef struct
 {
+    uint32_t config_version; //must be first; gates migration
+
     //Configuration
     int32_t num_gears;
-    
-    //gear settings
+
+    //gear settings (first NUM_REAR_GEARS used; array kept at 14 for layout stability)
     int32_t gear_pos[14];
-  
+
+    //captured calibration reference points (so a re-fit needs no re-jog)
+    int32_t ref_lo;
+    int32_t ref_hi;
+    uint8_t ref_lo_idx;
+    uint8_t ref_hi_idx;
+
     //PID Gains
     float Kp;
     float Ki;
@@ -33,6 +46,17 @@ typedef struct
     int16_t cos_min;
     int16_t cos_max;
 
+    //overshift/dwell per rear gear, per front position, per direction (up/down)
+    overshift_t rear_overshift[NUM_REAR_GEARS][NUM_FRONT_POS][NUM_DIRS];
+
+    //front derailleur provisioning (data only; no actuation yet)
+    int32_t     front_pos[NUM_FRONT_POS];
+    overshift_t front_overshift[NUM_FRONT_POS][NUM_DIRS];
+
+    //overcurrent protection
+    int16_t  isense_limit;        //raw SAADC counts; 0 disables the check
+    uint16_t isense_fault_count;  //consecutive over-limit samples before faulting
+
 } epx_configuration_t;
 
 /* A dummy structure to save in flash. */
@@ -42,6 +66,7 @@ typedef struct
     int32_t current_rotations;
     int32_t target_angle;
     int8_t current_gear;
+    int8_t current_front;   //selected chainring (0/1); provision
 
     //Historic data
     uint32_t upshifts;

@@ -26,3 +26,23 @@ bool gears_interpolate(int32_t *gear_pos, int n,
     }
     return true;
 }
+
+bool gears_fit_profile(int32_t *gear_pos, int n, const float *profile,
+                       int idx_lo, int32_t pos_lo,
+                       int idx_hi, int32_t pos_hi)
+{
+    if (gear_pos == 0 || profile == 0 || n <= 0) return false;
+    if (idx_lo < 0 || idx_hi < 0 || idx_lo >= n || idx_hi >= n) return false;
+    if (idx_hi == idx_lo) return false;
+
+    float denom = profile[idx_hi] - profile[idx_lo];
+    if (denom == 0.0f) return false;
+
+    float scale  = (float)(pos_hi - pos_lo) / denom;
+    float offset = (float)pos_lo - scale * profile[idx_lo];
+    for (int i = 0; i < n; i++)
+    {
+        gear_pos[i] = lround_div(offset + scale * profile[i]);
+    }
+    return true;
+}

@@ -56,6 +56,7 @@
 
 #include "data_handler.h"
 #include "console.h"
+#include "serial_io.h"
 
 
 #define DEVICE_NAME                     "EPX"                         /**< Name of device. Will be included in the advertising data. */
@@ -829,44 +830,37 @@ void nus_data_send(uint8_t *data_array, uint16_t length)
 /**@snippet [Handling the data received over UART] */
 void uart_event_handle(app_uart_evt_t * p_event)
 {
-    static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
+    static char    line[64];
     static uint8_t index = 0;
-    uint32_t       err_code;
+    uint8_t        ch;
 
     switch (p_event->evt_type)
     {
         case APP_UART_DATA_READY:
-            UNUSED_VARIABLE(app_uart_get(&data_array[index]));
-            index++;
+            if (app_uart_get(&ch) != NRF_SUCCESS) break;
 
-            if ((data_array[index - 1] == '\n') ||
-                (data_array[index - 1] == '\r') ||
-                (index >= m_ble_nus_max_data_len))
+            if (ch == '\n' || ch == '\r')
             {
-                if (index > 1)
+                if (index > 0)
                 {
-                    NRF_LOG_DEBUG("Ready to send data over BLE NUS");
-                    NRF_LOG_HEXDUMP_DEBUG(data_array, index);
-
-                    do
-                    {
-                        uint16_t length = (uint16_t)index;
-                        err_code = ble_nus_data_send(&m_nus, data_array, &length, m_conn_handle);
-                        if ((err_code != NRF_ERROR_INVALID_STATE) &&
-                            (err_code != NRF_ERROR_RESOURCES) &&
-                            (err_code != NRF_ERROR_NOT_FOUND))
-                        {
-                            APP_ERROR_CHECK(err_code);
-                        }
-                    } while (err_code == NRF_ERROR_RESOURCES);
+                    // Same parser as the BLE NUS path (data_handler).
+                    data_handler_command(line, index);
+                    index = 0;
                 }
-
-                index = 0;
+            }
+            else if (index < sizeof(line) - 1)
+            {
+                line[index++] = (char)ch;
+            }
+            else
+            {
+                index = 0; // overflow: drop the line
             }
             break;
 
         case APP_UART_COMMUNICATION_ERROR:
-            APP_ERROR_HANDLER(p_event->data.error_communication);
+            // Ignore line noise / framing errors rather than asserting (RX is now
+            // live and an open terminal can glitch the line).
             break;
 
         case APP_UART_FIFO_ERROR:
@@ -877,6 +871,19 @@ void uart_event_handle(app_uart_evt_t * p_event)
             break;
     }
 }
+
+/**@brief Blocking-ish UART byte writer used by the console and telemetry. */
+static bool m_uart_ready = false;
+
+void serial_write(const uint8_t *data, uint16_t len)
+{
+    if (!m_uart_ready) return;
+    for (uint16_t i = 0; i < len; i++)
+    {
+        uint32_t guard = 100000;
+        while (app_uart_put(data[i]) != NRF_SUCCESS && guard) { guard--; }
+    }
+}
 /**@snippet [Handling the data received over UART] */
 
 
@@ -885,29 +892,28 @@ void uart_event_handle(app_uart_evt_t * p_event)
 /**@snippet [UART Initialization] */
 static void uart_init(void)
 {
-//     uint32_t                     err_code;
-//     app_uart_comm_params_t const comm_params =
-//     {
-//         .rx_pin_no    = RX_PIN_NUMBER,
-//         .tx_pin_no    = TX_PIN_NUMBER,
-//         .rts_pin_no   = RTS_PIN_NUMBER,
-//         .cts_pin_no   = CTS_PIN_NUMBER,
-//         .flow_control = APP_UART_FLOW_CONTROL_DISABLED,
-//         .use_parity   = false,
-// #if defined (UART_PRESENT)
-//         .baud_rate    = NRF_UART_BAUDRATE_115200
-// #else
-//         .baud_rate    = NRF_UARTE_BAUDRATE_115200
-// #endif
-//     };
+    uint32_t                     err_code;
+    app_uart_comm_params_t const comm_params =
+    {
+        .rx_pin_no    = RX_PIN_NUMBER,           // P0.27 (COM5)
+        .tx_pin_no    = TX_PIN_NUMBER,           // P0.23
+        .rts_pin_no   = 0,                       // unused (flow control disabled)
+        .cts_pin_no   = 0,                       // unused (flow control disabled)
+        .flow_control = APP_UART_FLOW_CONTROL_DISABLED,
+        .use_parity   = false,
+        // baud_rate is a uint32_t register value; this MDK constant is always defined.
+        .baud_rate    = UART_BAUDRATE_BAUDRATE_Baud115200
+    };
 
-//     APP_UART_FIFO_INIT(&comm_params,
-//                        UART_RX_BUF_SIZE,
-//                        UART_TX_BUF_SIZE,
-//                        uart_event_handle,
-//                        APP_IRQ_PRIORITY_LOWEST,
-//                        err_code);
-//     APP_ERROR_CHECK(err_code);
+    APP_UART_FIFO_INIT(&comm_params,
+                       UART_RX_BUF_SIZE,
+                       UART_TX_BUF_SIZE,
+                       uart_event_handle,
+                       APP_IRQ_PRIORITY_LOWEST,
+                       err_code);
+    APP_ERROR_CHECK(err_code);
+
+    m_uart_ready = true;
 }
 /**@snippet [UART Initialization] */
 

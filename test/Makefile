@@ -5,7 +5,9 @@
 CC      ?= cc
 CFLAGS  ?= -O2 -g -Wall -Wextra -std=c11
 LIBS    := ../libraries
-SRC     := test_loop.c sim_plant.c $(LIBS)/PID_controller.c $(LIBS)/motor_sm.c $(LIBS)/gears.c
+SRC     := test_loop.c sim_plant.c \
+           $(LIBS)/PID_controller.c $(LIBS)/motor_sm.c $(LIBS)/gears.c \
+           $(LIBS)/derailleur.c $(LIBS)/shift_seq.c
 OUT     := sil
 
 .PHONY: all run clean

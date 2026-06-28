@@ -44,6 +44,7 @@ extern "C" {
 #define GAGE_CTRL 19
 
 #define TX_PIN_NUMBER 23
+#define RX_PIN_NUMBER 27   // UART RX wired to P0.27 (was TP1) for the COM5 console
 
 #define TP1 27
 #define TP2 28

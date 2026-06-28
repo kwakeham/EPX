@@ -158,14 +158,13 @@ int main(void)
     mpos_init(&data_handler_req_update_position_flash);
     drv8874_init();
 
-    //Interactive RTT console for commands + telemetry
+    //Interactive UART console banner (commands + telemetry on COM5)
     console_init();
 
     // Enter main loop.
     for (;;)
     {
         mpos_motor_drive();
-        console_poll();
         data_handler_sch_execute();
         idle_state_handle();
     }
