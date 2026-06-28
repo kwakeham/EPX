@@ -80,7 +80,14 @@ static struct
 
 /* Default configuration. Used both to seed a fresh chip and to reset on a
  * config-version mismatch. Unlisted fields (gear_pos, gains, overshift arrays,
- * front provisioning) default to zero. */
+ * front provisioning) default to zero.
+ *
+ * NOTE: gains (Kp/Ki/Kd) and gear_pos[] are intentionally 0 here. They were never
+ * hard-coded in source -- historically they were tuned/captured over the console
+ * (p/i/d, and g l / g h / g i calibration) and persisted to flash. After a flash
+ * wipe / CONFIG_VERSION bump, restore a usable config by re-running calibration
+ * and re-tuning. PID starting points and the sin/cos calibration reference are
+ * commented in libraries/mpos.c (mpos_init / the sin_min..cos_max block). */
 #define EPX_CONFIG_DEFAULTS                 \
 {                                           \
     .config_version     = CONFIG_VERSION,   \

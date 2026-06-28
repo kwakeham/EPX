@@ -63,7 +63,9 @@ static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, 
 static nrf_saadc_value_t sin_cos[2]; //stores the current value of sin in sin_cos[0] and cos in sin_cos[1]
 
 //these are broken out to individual values because I think it'll be easier to understand
-//<info> mpos: sin max, 2515, min, 1522                                        
+// Sin/cos calibration reference (restore these defaults after a flash wipe).
+// Defaults below; observed-on-hardware ranges from old logs:
+//<info> mpos: sin max, 2515, min, 1522
 //<info> mpos: cos max, 2640, min, 1492
 static nrf_saadc_value_t sin_min = 1550;
 static nrf_saadc_value_t sin_max = 2500;
@@ -229,6 +231,12 @@ void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and t
     nrf_gpio_cfg_input(M_nFault, NRF_GPIO_PIN_PULLUP);
 
     // Control + sleep state machine. Gains are bound earlier via mpos_link_gains().
+    // Recovered tuning reference (pre-rewrite PID_controller.c, re-tune from here):
+    //   Kp ~ 9 @128Hz, 18 @256Hz, 35-40 @512Hz  (old PID summed error; this one
+    //   folds dt in, so those numbers are only a starting point -- re-tune).
+    //   old limits: integral +/-300, output +/-400, deadband +/-50 (deadband removed).
+    //   old motor-sleep was SLEEP_THRESHOLD 600 (~2.3s of low drive); replaced by
+    //   settle-on-position MPOS_SETTLE_TICKS (64 ticks ~0.25s in band).
     pid_init(&m_pid, m_kp, m_ki, m_kd, -400.0f, 400.0f, -2000.0f, 2000.0f);
     motor_sm_init(&m_sm, (float)ANGLE_THRESHOLD, MPOS_SETTLE_TICKS);
     shift_seq_init(&m_seq);

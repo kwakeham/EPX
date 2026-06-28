@@ -40,6 +40,11 @@ typedef struct
  *        units are arbitrary; calibration scales+offsets this to land gear 2 and
  *        gear 10 on the captured positions. Edit these with measured EPS ratios;
  *        the default is even spacing (which reduces to linear interpolation).
+ *
+ *        PLACEHOLDER: the default is even spacing -- there are no historical
+ *        numbers to recover (the real cassette was never characterised in
+ *        source). The true EPS 11-speed cog spacing is non-linear and must be
+ *        measured, then entered in gear_profile_nominal[] (see derailleur.c).
  */
 extern const float gear_profile_nominal[NUM_REAR_GEARS];
 
