@@ -69,13 +69,14 @@ void data_handler_button_event_handler(multibtn_event_t evt)
     {
         // Btn1 = up, Btn2 = down in terms of *derailleur motion*. The angle
         // increases in the opposite physical direction, so Btn1 (up) jogs the
-        // angle negative and Btn2 (down) jogs it positive.
+        // angle negative and Btn2 (down) jogs it positive. Each jog clears any
+        // overcurrent latch first so a jog back off a hard stop can't trap us.
         switch (evt)
         {
-        case MULTI_BTN_EVENT_CH1_PUSH:  mpos_update_angle(false, -(float)CALIB_JOG_FINE);   break;
-        case MULTI_BTN_EVENT_CH2_PUSH:  mpos_update_angle(false, (float)CALIB_JOG_FINE);    break;
-        case MULTI_BTN_EVENT_CH1_LONG:  mpos_update_angle(false, -(float)CALIB_JOG_COARSE); break;
-        case MULTI_BTN_EVENT_CH2_LONG:  mpos_update_angle(false, (float)CALIB_JOG_COARSE);  break;
+        case MULTI_BTN_EVENT_CH1_PUSH:  mpos_clear_fault(); mpos_update_angle(false, -(float)CALIB_JOG_FINE);   break;
+        case MULTI_BTN_EVENT_CH2_PUSH:  mpos_clear_fault(); mpos_update_angle(false, (float)CALIB_JOG_FINE);    break;
+        case MULTI_BTN_EVENT_CH1_LONG:  mpos_clear_fault(); mpos_update_angle(false, -(float)CALIB_JOG_COARSE); break;
+        case MULTI_BTN_EVENT_CH2_LONG:  mpos_clear_fault(); mpos_update_angle(false, (float)CALIB_JOG_COARSE);  break;
         case MULTI_BTN_EVENT_CH3_PUSH:  data_handler_calibration_capture();                 break;
         default: break;
         }
@@ -596,6 +597,14 @@ void data_handler_calibration_enter(void)
     calibrating = true;
     calib_step  = 0;
     shift_mode  = false;   // angle mode so the buttons jog and gears don't shift
+
+    // Escape hatch: a bad stored position can drive into an end-of-travel hard
+    // stop on boot and latch an overcurrent fault, which would otherwise inhibit
+    // the jog we need to recover. Clear the fault and hold the *current* position
+    // so we stop pushing into the stop; the user then jogs away and captures.
+    mpos_clear_fault();
+    mpos_update_angle(true, mpos_last_angle());
+
     sprintf(buff1, "CAL 1/2: jog to GEAR %d (b1 up / b2 down), b3 capture; 'c' cancels",
             GEAR_REF_LO_IDX + 1);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
