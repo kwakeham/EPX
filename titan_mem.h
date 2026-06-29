@@ -69,7 +69,10 @@ typedef struct
     // Saved on motor settle AND whenever it changes; an abrupt power-off mid-move
     // can still leave it stale -- see "Known risk" in CLAUDE.md.
     int32_t current_rotations;
-    int32_t target_angle;
+    int32_t target_angle;   // last commanded target; on boot it is IGNORED when the
+                            // gears are calibrated (boot target = gear_pos[current_gear],
+                            // see data_handler_set_boot_target). current_gear + the gear
+                            // table are the source of truth for where to go.
     int8_t current_gear;
     int8_t current_front;   //selected chainring (0/1); provision
 

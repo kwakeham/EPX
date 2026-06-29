@@ -64,6 +64,10 @@ void data_handler_sch_execute(void);
 
 void data_handler_get_flash_values(void);
 
+/** Seed the boot target from the calibrated gear table (current_gear), ignoring
+ *  the saved target_angle. Call after mpos_init(). */
+void data_handler_set_boot_target(void);
+
 void data_handler_req_update_position_flash(void);
 
 #endif

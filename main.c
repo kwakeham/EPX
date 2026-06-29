@@ -158,6 +158,9 @@ int main(void)
     mpos_init(&data_handler_req_update_position_flash);
     drv8874_init();
 
+    //Boot target = calibrated gear position for the saved gear (not target_angle)
+    data_handler_set_boot_target();
+
     //Interactive UART console banner (commands + telemetry on COM5)
     console_init();
 

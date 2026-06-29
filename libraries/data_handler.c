@@ -67,12 +67,15 @@ void data_handler_button_event_handler(multibtn_event_t evt)
     // buttons jog the derailleur and Btn3 captures the current gear reference.
     if (calibrating)
     {
+        // Btn1 = up, Btn2 = down in terms of *derailleur motion*. The angle
+        // increases in the opposite physical direction, so Btn1 (up) jogs the
+        // angle negative and Btn2 (down) jogs it positive.
         switch (evt)
         {
-        case MULTI_BTN_EVENT_CH1_PUSH:  mpos_update_angle(false, (float)CALIB_JOG_FINE);    break;
-        case MULTI_BTN_EVENT_CH2_PUSH:  mpos_update_angle(false, -(float)CALIB_JOG_FINE);   break;
-        case MULTI_BTN_EVENT_CH1_LONG:  mpos_update_angle(false, (float)CALIB_JOG_COARSE);  break;
-        case MULTI_BTN_EVENT_CH2_LONG:  mpos_update_angle(false, -(float)CALIB_JOG_COARSE); break;
+        case MULTI_BTN_EVENT_CH1_PUSH:  mpos_update_angle(false, -(float)CALIB_JOG_FINE);   break;
+        case MULTI_BTN_EVENT_CH2_PUSH:  mpos_update_angle(false, (float)CALIB_JOG_FINE);    break;
+        case MULTI_BTN_EVENT_CH1_LONG:  mpos_update_angle(false, -(float)CALIB_JOG_COARSE); break;
+        case MULTI_BTN_EVENT_CH2_LONG:  mpos_update_angle(false, (float)CALIB_JOG_COARSE);  break;
         case MULTI_BTN_EVENT_CH3_PUSH:  data_handler_calibration_capture();                 break;
         default: break;
         }
@@ -666,6 +669,24 @@ void data_handler_get_flash_values(void)
     mpos_link_gains(&epx_configuration.Kp, &epx_configuration.Ki, &epx_configuration.Kd);
     mpos_link_overcurrent(&epx_configuration.isense_limit, &epx_configuration.isense_fault_count);
     mpos_link_memory(&epx_position);//link the local value to the mpos controller
+}
+
+void data_handler_set_boot_target(void)
+{
+    // Source of truth on boot:
+    //  - current_rotations (from the saved position record) fixes ABSOLUTE position;
+    //  - current_gear (also from the position record) + the calibrated gear table
+    //    give the TARGET.
+    // The saved target_angle is ignored when the gears are filled in. Call after
+    // mpos_init() so this overrides mpos's default target seed.
+    if (epx_configuration.num_gears > 0)
+    {
+        int g = epx_position.current_gear;
+        if (g < 0) g = 0;
+        if (g > epx_configuration.num_gears - 1) g = epx_configuration.num_gears - 1;
+        mpos_update_angle(true, (float)epx_configuration.gear_pos[g]);
+    }
+    // else: uncalibrated -> leave mpos holding its loaded target_angle (no gear table yet).
 }
 
 void data_handler_req_update_position_flash(void)
