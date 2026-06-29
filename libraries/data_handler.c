@@ -333,6 +333,12 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
 
         NRF_LOG_INFO("Gear %d Angle %ld overshift %d", new_gear, final_pos, signed_overshift);
         mpos_shift_to(final_pos, signed_overshift, dwell_ticks);
+
+        // Persist the gear + target the instant we commit to it, not only when the
+        // motor settles. Otherwise a reboot before settle reverts to the previous
+        // gear and the position is offset. (Turn-count saves on movement keep
+        // current_rotations consistent alongside this.)
+        if (new_gear != old_gear) update_pos_flash = true;
     } else //if we're in angle mode
     {
         mpos_update_angle(false, (float)shift_count*5);
