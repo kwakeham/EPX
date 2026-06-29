@@ -34,6 +34,12 @@ NRF_LOG_MODULE_REGISTER();
 static int32_t ref_lo = 0, ref_hi = 0;
 static bool    ref_lo_set = false, ref_hi_set = false;
 
+// Guided calibration: jog to gear 2 / gear 10 with the buttons, capture with btn3.
+#define CALIB_JOG_FINE   5    // degrees per button tap
+#define CALIB_JOG_COARSE 30   // degrees per repeated long-press tick
+static bool calibrating = false;
+static int  calib_step  = 0;  // 0 = awaiting gear 2, 1 = awaiting gear 10
+
 static char command_message[CMD_LENGTH] = {};
 
 bool data_process_command = false;
@@ -42,8 +48,8 @@ epx_configuration_t epx_configuration;
 epx_position_configuration_t epx_position;
 
 //nus buffers
-char buff1[50];
-char buff2[50];
+char buff1[80];
+char buff2[80];
 
 bool update_config_flash = false; //Update the falsh memory from the main loop
 bool update_pos_flash = false; //Update the falsh memory from the main loop
@@ -56,37 +62,53 @@ uint32_t dh_debug_counter = 0;
 void data_handler_button_event_handler(multibtn_event_t evt)
 {
     NRF_LOG_INFO("button_event_handler %d", evt);
+
+    // Btn1 = up, Btn2 = down, Btn3 = mode/capture. In calibration the up/down
+    // buttons jog the derailleur and Btn3 captures the current gear reference.
+    if (calibrating)
+    {
+        switch (evt)
+        {
+        case MULTI_BTN_EVENT_CH1_PUSH:  mpos_update_angle(false, (float)CALIB_JOG_FINE);    break;
+        case MULTI_BTN_EVENT_CH2_PUSH:  mpos_update_angle(false, -(float)CALIB_JOG_FINE);   break;
+        case MULTI_BTN_EVENT_CH1_LONG:  mpos_update_angle(false, (float)CALIB_JOG_COARSE);  break;
+        case MULTI_BTN_EVENT_CH2_LONG:  mpos_update_angle(false, -(float)CALIB_JOG_COARSE); break;
+        case MULTI_BTN_EVENT_CH3_PUSH:  data_handler_calibration_capture();                 break;
+        default: break;
+        }
+        return;
+    }
+
 	switch (evt)
 	{
 	case MULTI_BTN_EVENT_NOTHING:
 		break;
 
-	case MULTI_BTN_EVENT_CH1_PUSH:
-        data_handler_shift_gear_handler(false, -1);
-		break;
-
-	case MULTI_BTN_EVENT_CH2_PUSH:
+	case MULTI_BTN_EVENT_CH1_PUSH:   // up
         data_handler_shift_gear_handler(false, 1);
 		break;
 
-	case MULTI_BTN_EVENT_CH3_PUSH:
-        data_handler_shift_mode_handler(false, true); //temporary, switch back to gear mode
+	case MULTI_BTN_EVENT_CH2_PUSH:   // down
+        data_handler_shift_gear_handler(false, -1);
+		break;
+
+	case MULTI_BTN_EVENT_CH3_PUSH:   // mode: toggle gear/angle
+        data_handler_shift_mode_handler(false, !shift_mode);
 		break;
 
 	case MULTI_BTN_EVENT_CH4_PUSH:
 		break;
 
-	case MULTI_BTN_EVENT_CH1_LONG:
-        data_handler_shift_gear_handler(false, -1);
-		break;
-
-	case MULTI_BTN_EVENT_CH2_LONG:
+	case MULTI_BTN_EVENT_CH1_LONG:   // up (repeats while held)
         data_handler_shift_gear_handler(false, 1);
 		break;
 
-	case MULTI_BTN_EVENT_CH3_LONG:
-        // data_handler_shift_mode_handler(false, false);
-        data_handler_long_mode_handler(true);
+	case MULTI_BTN_EVENT_CH2_LONG:   // down (repeats while held)
+        data_handler_shift_gear_handler(false, -1);
+		break;
+
+	case MULTI_BTN_EVENT_CH3_LONG:   // hold mode -> enter guided calibration
+        data_handler_calibration_enter();
 		break;
 
 	case MULTI_BTN_EVENT_CH4_LONG:
@@ -99,7 +121,6 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 		break;
 
 	case MULTI_BTN_EVENT_CH3_RELEASE:
-        data_handler_long_mode_handler(false);
 		break;
 
 	case MULTI_BTN_EVENT_CH4_RELEASE:
@@ -202,6 +223,21 @@ void data_handler_command_processor(void)
         if (epx_position.current_front < 0) epx_position.current_front = 0;
         if (epx_position.current_front >= NUM_FRONT_POS) epx_position.current_front = NUM_FRONT_POS - 1;
         update_pos_flash = true;
+        break;
+
+    case 0x63: //c Calibration mode: enter, or cancel if already calibrating
+        NRF_LOG_INFO("little c");
+        if (calibrating) data_handler_calibration_cancel();
+        else             data_handler_calibration_enter();
+        break;
+
+    case 0x76: //v Verbose monitor: v<divider> human-readable status (v0 off, v128 ~2Hz)
+        NRF_LOG_INFO("little v");
+        mpos_set_monitor((uint16_t)data_handler_command_number_return(1));
+        break;
+
+    case 0x3F: //? one-shot status line
+        data_handler_print_status();
         break;
 
     default:
@@ -534,6 +570,57 @@ void data_handler_show_gains(void)
     nus_data_send((uint8_t *)buff1, strlen(buff1));
 }
 
+void data_handler_print_status(void)
+{
+    const char *mode = calibrating ? "CAL" : (shift_mode ? "GEAR" : "ANGLE");
+    int32_t pos = (int32_t)mpos_last_angle();
+    int32_t tgt = mpos_subtarget();
+    sprintf(buff1, "%s g%d pos %ld tgt %ld err %ld I %d %s%s",
+            mode, epx_position.current_gear, pos, tgt, tgt - pos,
+            mpos_isense(), mpos_state() ? "MOV" : "HLD",
+            mpos_is_faulted() ? " FAULT" : "");
+    nus_data_send((uint8_t *)buff1, strlen(buff1));
+}
+
+void data_handler_calibration_enter(void)
+{
+    calibrating = true;
+    calib_step  = 0;
+    shift_mode  = false;   // angle mode so the buttons jog and gears don't shift
+    sprintf(buff1, "CAL 1/2: jog to GEAR %d (b1 up / b2 down), b3 capture; 'c' cancels",
+            GEAR_REF_LO_IDX + 1);
+    nus_data_send((uint8_t *)buff1, strlen(buff1));
+}
+
+void data_handler_calibration_cancel(void)
+{
+    calibrating = false;
+    sprintf(buff1, "CAL cancelled");
+    nus_data_send((uint8_t *)buff1, strlen(buff1));
+}
+
+void data_handler_calibration_capture(void)
+{
+    if (calib_step == 0)
+    {
+        ref_lo     = (int32_t)mpos_last_angle();
+        ref_lo_set = true;
+        calib_step = 1;
+        sprintf(buff1, "Gear %d = %ld. CAL 2/2: jog to GEAR %d, b3 capture",
+                GEAR_REF_LO_IDX + 1, ref_lo, GEAR_REF_HI_IDX + 1);
+        nus_data_send((uint8_t *)buff1, strlen(buff1));
+    }
+    else
+    {
+        ref_hi      = (int32_t)mpos_last_angle();
+        ref_hi_set  = true;
+        calibrating = false;
+        sprintf(buff1, "Gear %d = %ld. Computing gears...", GEAR_REF_HI_IDX + 1, ref_hi);
+        nus_data_send((uint8_t *)buff1, strlen(buff1));
+        data_handler_compute_gears();   // fits profile through the two refs, persists, echoes
+    }
+}
+
 void data_handler_sch_execute(void)
 {
 
@@ -542,6 +629,11 @@ void data_handler_sch_execute(void)
         data_handler_command_processor();
         data_process_command = false;
         NRF_LOG_INFO("data_process_command, %d", data_process_command);
+    }
+
+    if (mpos_monitor_due())   // low-rate human-readable status (v<n>)
+    {
+        data_handler_print_status();
     }
 
     if(update_config_flash)

@@ -15,7 +15,7 @@
 void console_init(void)
 {
     static const char banner[] =
-        "\r\nEPX console ready. Commands: s<g> | g l/h/i | o | x | k | y<n>\r\n";
+        "\r\nEPX console ready. Commands: s<g> | c(al) | ? | v<n> | g l/h/i | o | x | k | y<n>\r\n";
     serial_write((const uint8_t *)banner, sizeof(banner) - 1);
 }
 

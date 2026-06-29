@@ -58,6 +58,11 @@ static uint16_t        m_over_count = 0;         // consecutive over-limit sampl
 static int16_t         m_isense = 0;             // last raw current-sense count
 static bool            m_fault = false;          // latched overcurrent/driver fault
 
+// Human-readable debug monitor pacing (separate from the CSV telemetry)
+static uint16_t        m_mon_div = 0;            // 0 = off, else print every Nth tick
+static uint16_t        m_mon_phase = 0;
+static volatile bool   m_mon_due = false;
+
 static nrf_saadc_value_t m_buffer_pool[3]; //temporary Adc storage in sin, cos, isense order
 
 static nrf_saadc_value_t sin_cos[2]; //stores the current value of sin in sin_cos[0] and cos in sin_cos[1]
@@ -98,6 +103,29 @@ void mpos_link_overcurrent(const int16_t *limit, const uint16_t *count)
 int16_t mpos_isense(void)
 {
     return m_isense;
+}
+
+int mpos_state(void)
+{
+    return (int)m_sm.state;
+}
+
+int32_t mpos_subtarget(void)
+{
+    return m_subtarget;
+}
+
+void mpos_set_monitor(uint16_t divider)
+{
+    m_mon_div   = divider;
+    m_mon_phase = 0;
+    m_mon_due   = false;
+}
+
+bool mpos_monitor_due(void)
+{
+    if (m_mon_due) { m_mon_due = false; return true; }
+    return false;
 }
 
 bool mpos_is_faulted(void)
@@ -449,6 +477,13 @@ void mpos_motor_drive(void)
     drv8874_drive((int16_t)drive);
 
     telemetry_tick(target, current, drive, m_pid.integral, (int)m_sm.state, m_isense, m_fault);
+
+    // Pace the low-rate human-readable monitor (printed from the main loop).
+    if (m_mon_div && ++m_mon_phase >= m_mon_div)
+    {
+        m_mon_phase = 0;
+        m_mon_due   = true;
+    }
 }
 
 void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)

@@ -52,6 +52,14 @@ void data_handler_fault_command(void);
 
 void data_handler_show_gains(void);
 
+/** Print a one-line human-readable status (mode, gear, pos, target, ISENSE, state, fault). */
+void data_handler_print_status(void);
+
+/** Guided calibration: enter, cancel, and capture-the-next-reference (button 3). */
+void data_handler_calibration_enter(void);
+void data_handler_calibration_cancel(void);
+void data_handler_calibration_capture(void);
+
 void data_handler_sch_execute(void);
 
 void data_handler_get_flash_values(void);

@@ -111,11 +111,23 @@ void mpos_shift_to(int32_t final_pos, int16_t signed_overshift, uint16_t dwell_t
 /** Last raw current-sense (ISENSE/AIN1) count. */
 int16_t mpos_isense(void);
 
+/** Motor sleep state (0 = HOLDING, 1 = MOVING). */
+int mpos_state(void);
+
+/** Position the controller is currently chasing (overshift sub-target). */
+int32_t mpos_subtarget(void);
+
 /** True while an overcurrent/driver fault is latched (motion inhibited). */
 bool mpos_is_faulted(void);
 
 /** Clear a latched fault and re-enable motion. */
 void mpos_clear_fault(void);
+
+/** Pace the human-readable debug monitor: print every `divider` ticks (0 = off). */
+void mpos_set_monitor(uint16_t divider);
+
+/** True (once) when a monitor line is due; clears the flag. Poll from main loop. */
+bool mpos_monitor_due(void);
 
 /**
  * @brief Last angle computed by mpos_motor_drive(), with no side effects.
