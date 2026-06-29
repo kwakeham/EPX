@@ -620,6 +620,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             NRF_LOG_INFO("Disconnected");
             // LED indication will be changed when advertising starts.
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
+            // Persist position (incl. the critical turn count) now -- a disconnect
+            // often precedes a power-off. Device stays alive so the main loop
+            // commits the async write.
+            data_handler_req_update_position_flash();
             // max_req_shutdown();
             // TODO shut down everything like ADC, prep the LIS to interrupt
             break;

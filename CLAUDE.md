@@ -41,6 +41,32 @@ They are **not** hard-coded in source and are reset to safe defaults when `CONFI
 After a flash wipe / version bump, re-run calibration and re-tune. See the recovered tuning references
 commented in [libraries/mpos.c](libraries/mpos.c) and [titan_mem.c](titan_mem.c) for starting points.
 
+## Known risk: relative multi-turn position (read before touching position code)
+The sin/cos hall sensor is **absolute only within one 360° magnet turn**. The derailleur spans
+multiple turns, so true position = `current_rotations * 360 + within-turn angle`. `current_rotations`
+(in `epx_position_configuration_t`, counted in `angle()` in [libraries/mpos.c](libraries/mpos.c)) is the
+**single point of failure** for absolute position — it is only correct while continuously powered and
+sampled (256 Hz, can't move >180° between samples).
+
+- **Persistence today:** the turn count is saved on motor settle/sleep, **whenever it changes** (a turn
+  boundary is crossed), and on BLE disconnect. So a *clean* reboot keeps position.
+- **Risk window:** an **abrupt power-off mid-move** (or an external nudge of the derailleur) before the
+  next save leaves the flash turn count stale. On reboot the controller can think it's a full turn off
+  and drive the wrong way. The overcurrent fault catches a resulting hard-stop stall, but the position
+  is still wrong.
+- **Quick mitigations in place:** save-on-turn-change (above) shrinks the window; the boot seed for
+  `angle_old` comes from the first real reading (not `target_angle`) so the first post-boot sample
+  can't spuriously add/subtract a turn.
+- **Not yet handled (decide later) — recovery from an abrupt mid-move loss:**
+  1. **Home to a hard stop on boot** (recommended): a flash "dirty/moving" flag set on move-start and
+     cleared on settle; on boot if dirty, slowly drive into a mechanical hard stop (detected via the
+     overcurrent fault) to re-zero the turn count. Robust; moves the derailleur on power-up.
+  2. **POF last-gasp save:** nRF52 power-fail comparator writes the turn count on the brownout warning;
+     reliability depends on board hold-up capacitance.
+  3. **Flag + manual re-home:** on unsafe shutdown, refuse automatic moves and require re-calibration.
+
+When editing position/rotation code, preserve these invariants and update this section.
+
 ## Commit workflow
 After each meaningful, **tested** unit of work, make a focused commit and **push to origin/master**:
 - Terse, imperative messages matching the existing history (e.g. "extract drive strength to a function").

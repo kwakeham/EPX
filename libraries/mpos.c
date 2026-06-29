@@ -83,6 +83,14 @@ static nrf_saadc_value_t cos_avg = 2030;
 // static int8_t rotation_count = 0; //TODO get this from epx sleep configuration
 static epx_position_configuration_t *link_epx_pos = NULL;
 static float angle_old; // last angle to keep track of if we need to add or subtract an angle
+static bool  m_angle_primed = false;  // seed angle_old from the first real reading (not target)
+
+// CRITICAL: the sin/cos sensor is absolute only within one 360 turn. Absolute
+// derailleur position = current_rotations * 360 + within-turn angle, so
+// current_rotations is the fragile multi-turn state. It is persisted on motor
+// settle AND whenever it changes (see mpos_motor_drive). An abrupt power-off
+// mid-move can still leave it stale -- see "Known risk" in CLAUDE.md.
+static int32_t m_saved_rotations = 0;  // last turn count we requested be persisted
 
 static void _default_pos_save_callback(void) {}
 static voidfunctionptr_t  m_registered_pos_save_callback = &_default_pos_save_callback;
@@ -341,6 +349,17 @@ float angle(int16_t hall_0, int16_t hall_1)
 {
     float rotation_angle;
     rotation_angle = (atan2f((float)(hall_0-sin_avg),(float)(hall_1-cos_avg))*180/3.14159265359)+180 ;
+
+    // Seed angle_old from the first real reading after boot so the first sample
+    // does not look like a 180 wrap and spuriously add/subtract a whole turn.
+    if (!m_angle_primed)
+    {
+        angle_old      = rotation_angle;
+        m_angle_primed = true;
+        return rotation_angle;
+    }
+
+    // Count a turn each time the within-turn angle wraps across the 180 boundary.
     if (angle_old > rotation_angle)
     {
         if ((angle_old - rotation_angle) > 180.0)
@@ -394,8 +413,10 @@ float mpos_calculate_angle(void)
         sin_cos[1] = m_buffer_pool[1];
         m_isense   = m_buffer_pool[2]; //current sense (AIN1), used by the overcurrent guard
         mpos_min_max(); // store min max for average offset
-        float current_angle = angle(sin_cos[0], sin_cos[1]); //return angle
-        current_angle += (link_epx_pos->current_rotations)*360; //find the total current angle
+        float current_angle = angle(sin_cos[0], sin_cos[1]); //within-turn angle (0..360)
+        // Absolute position = turn count * 360 + within-turn angle. See the
+        // current_rotations note above / "Known risk" in CLAUDE.md.
+        current_angle += (link_epx_pos->current_rotations)*360;
         return current_angle;
 }
 
@@ -408,6 +429,17 @@ void mpos_motor_drive(void)
 
     float current = mpos_calculate_angle();
     m_last_angle  = current;
+
+    // Persist the multi-turn count as soon as it changes (a turn boundary was
+    // crossed), not just when the motor settles -- this shrinks the window where
+    // an abrupt power-off would lose the turn count. Crossings are infrequent so
+    // flash wear stays comparable to the per-shift save; the only pathological
+    // case is the PID hunting exactly on a 360 boundary (rare, and it settles).
+    if (link_epx_pos->current_rotations != m_saved_rotations)
+    {
+        m_saved_rotations = link_epx_pos->current_rotations;
+        m_registered_pos_save_callback();
+    }
 
     // Overcurrent guard: if faulted, kill drive, sleep the driver, abort any
     // shift, and inhibit motion until the fault is cleared.
@@ -489,7 +521,10 @@ void mpos_motor_drive(void)
 void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)
 {
     link_epx_pos = temp_link_epx_values;
-    angle_old = (link_epx_pos->target_angle) % 360;
+    // angle_old is seeded from the first real reading (see angle()); don't trust
+    // target_angle here. Track the restored turn count so we only persist changes.
+    m_angle_primed   = false;
+    m_saved_rotations = link_epx_pos->current_rotations;
 }
 
 void mpos_sincos_debug(void)

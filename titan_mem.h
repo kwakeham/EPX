@@ -63,6 +63,11 @@ typedef struct
 typedef struct
 {
     //current information for sleep restore data
+    // CRITICAL: the sensor is absolute only within one 360 turn, so absolute
+    // position = current_rotations*360 + within-turn angle. current_rotations is
+    // the multi-turn count and the single point of failure for absolute position.
+    // Saved on motor settle AND whenever it changes; an abrupt power-off mid-move
+    // can still leave it stale -- see "Known risk" in CLAUDE.md.
     int32_t current_rotations;
     int32_t target_angle;
     int8_t current_gear;
