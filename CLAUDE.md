@@ -5,6 +5,9 @@ EPX is a wireless motor controller for a **Campagnolo EPS 11-speed derailleur**,
 to discrete gear angles, using a sin/cos hall potentiometer (SAADC) for position feedback. The control
 loop runs cooperatively at 256 Hz in [main.c](main.c).
 
+**System design + the position/turns/recovery model: [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md).**
+Running history + test plan: [DEVLOG.md](DEVLOG.md).
+
 ## Layout
 - [libraries/](libraries/) — application logic:
   - [mpos.c](libraries/mpos.c) control loop: reads angle, runs PID, sleep state machine, overcurrent, telemetry.
@@ -41,31 +44,25 @@ They are **not** hard-coded in source and are reset to safe defaults when `CONFI
 After a flash wipe / version bump, re-run calibration and re-tune. See the recovered tuning references
 commented in [libraries/mpos.c](libraries/mpos.c) and [titan_mem.c](titan_mem.c) for starting points.
 
-## Known risk: relative multi-turn position (read before touching position code)
-The sin/cos hall sensor is **absolute only within one 360° magnet turn**. The derailleur spans
-multiple turns, so true position = `current_rotations * 360 + within-turn angle`. `current_rotations`
-(in `epx_position_configuration_t`, counted in `angle()` in [libraries/mpos.c](libraries/mpos.c)) is the
-**single point of failure** for absolute position — it is only correct while continuously powered and
-sampled (256 Hz, can't move >180° between samples).
+## Multi-turn position (read before touching position code)
+The sin/cos hall sensor is **absolute only within one 360° turn**; true position is
+`current_rotations * 360 + within-turn angle`. `current_rotations` (in
+`epx_position_configuration_t`, counted in `angle()` in [libraries/mpos.c](libraries/mpos.c)) is the
+only state that can't be re-derived from the sensor after power loss.
 
-- **Persistence today:** the turn count is saved on motor settle/sleep, **whenever it changes** (a turn
-  boundary is crossed), and on BLE disconnect. So a *clean* reboot keeps position.
-- **Risk window:** an **abrupt power-off mid-move** (or an external nudge of the derailleur) before the
-  next save leaves the flash turn count stale. On reboot the controller can think it's a full turn off
-  and drive the wrong way. The overcurrent fault catches a resulting hard-stop stall, but the position
-  is still wrong.
-- **Quick mitigations in place:** save-on-turn-change (above) shrinks the window; the boot seed for
-  `angle_old` comes from the first real reading (not `target_angle`) so the first post-boot sample
-  can't spuriously add/subtract a turn.
-- **Not yet handled (decide later) — recovery from an abrupt mid-move loss:**
-  1. **Home to a hard stop on boot** (recommended): a flash "dirty/moving" flag set on move-start and
-     cleared on settle; on boot if dirty, slowly drive into a mechanical hard stop (detected via the
-     overcurrent fault) to re-zero the turn count. Robust; moves the derailleur on power-up.
-  2. **POF last-gasp save:** nRF52 power-fail comparator writes the turn count on the brownout warning;
-     reliability depends on board hold-up capacitance.
-  3. **Flag + manual re-home:** on unsafe shutdown, refuse automatic moves and require re-calibration.
+The handling is the **store-turns-to-flash (Campagnolo) method** — full design and rationale in
+[PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md). In short: persist `current_rotations` + `current_gear`
+often (settle/idle, each turn crossing, each shift, disconnect); on boot reconstruct
+`position = stored_rotations·360 + sensor` and set the target from `gear_pos[current_gear]`. It's
+low-risk because the derailleur isn't easily back-driven, so a power cut loses only a few degrees.
 
-When editing position/rotation code, preserve these invariants and update this section.
+Invariants to preserve when editing position code:
+- `current_rotations` + `current_gear` are the persisted source of truth; `target_angle` is vestigial
+  (don't rely on it; it's a removal candidate).
+- Seed `angle_old` from the first real reading (not `target_angle`) to avoid a first-sample miscount.
+- **No autonomous homing to a hard stop** — a reboot mid-ride must never fling the derailleur.
+  Recovery from a bad turn count is deliberate recalibration (`c`), which also clears faults + holds.
+- Known deferred edge case: ±1-turn ambiguity if power is lost right at the 180° wrap.
 
 ## Commit workflow
 After each meaningful, **tested** unit of work, make a focused commit and **push to origin/master**:

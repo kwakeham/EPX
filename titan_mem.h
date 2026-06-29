@@ -65,9 +65,9 @@ typedef struct
     //current information for sleep restore data
     // CRITICAL: the sensor is absolute only within one 360 turn, so absolute
     // position = current_rotations*360 + within-turn angle. current_rotations is
-    // the multi-turn count and the single point of failure for absolute position.
-    // Saved on motor settle AND whenever it changes; an abrupt power-off mid-move
-    // can still leave it stale -- see "Known risk" in CLAUDE.md.
+    // the multi-turn count and the persisted source of truth for absolute position
+    // (store-turns method). Saved on settle/idle, on every turn change, on shift,
+    // and on disconnect. See PROJECT_OVERVIEW.md for the design and recovery flow.
     int32_t current_rotations;
     int32_t target_angle;   // last commanded target; on boot it is IGNORED when the
                             // gears are calibrated (boot target = gear_pos[current_gear],

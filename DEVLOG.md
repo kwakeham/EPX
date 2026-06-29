@@ -42,70 +42,63 @@ needs tuning). Gear table is calibrated but the stored absolute position is curr
 
 ---
 
-## Regression analysis — boot-slam into the hard stop (#1)
+## Boot-slam analysis (#1) — corrected: NOT a code regression
 
-**Symptom:** on boot the derailleur drives hard into an end-of-travel stop and latches an
-overcurrent fault (observed: `tgt -10708` while physically at `pos -9259`, err -1449).
+**Symptom:** on boot the derailleur drove hard into an end-of-travel stop and latched an
+overcurrent fault (observed: `tgt -10708` while physically at `pos -9259`).
 
-**Root cause:** commit **`0d64e2d`** added `data_handler_set_boot_target()`
-([libraries/data_handler.c](libraries/data_handler.c), called at [main.c:162](main.c#L162)),
-which on boot sets the target to `gear_pos[current_gear]`. When the stored turn count has
-drifted (relative actuator + abrupt power loss), that absolute target is far from the
-physical position → a large blind move into the stop.
+**Corrected root cause (per domain input, Campagnolo veteran):** the boot behavior is the
+**intended design**, not a bug. `data_handler_set_boot_target()` (`0d64e2d`,
+[data_handler.c](libraries/data_handler.c), called at [main.c:162](main.c#L162)) sets the
+target from the stored gear — `gear_pos[current_gear]` — which is exactly the Campagnolo
+recovery method (see [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)). It is safe **because the
+derailleur is not easily back-driven**, so `stored_rotations·360 + sensor` reconstructs the
+real position to within a few degrees and the gear target ≈ where it already is.
 
-**Original behavior (`ca07aee`, worked):** boot ran `get_flash_values → mpos_init →
-drv8874_init` with **no** boot-target step; the drive loop used `target =
-link_epx_pos->target_angle`, i.e. the **last saved resting position**. On a clean reboot
-that equals where the derailleur physically is → little/no motion. Safe.
+The slam happened only because our **bench state had an inconsistent turn count**: heavy
+manual handling, many resets, Kp=1 driving to assorted targets, and recalibrating gears
+against a shifted turn baseline left `current_rotations` out of sync with the calibrated
+`gear_pos[]`. In normal on-bike use this does not occur. **Recovery is recalibration**
+(console `c` + button jog/capture), which also clears the fault and holds position.
 
-**Suggested reversion:** remove the `data_handler_set_boot_target()` call (or change it to
-hold the current *measured* position) so boot does **not** seek `gear_pos`. This restores
-the safe original behavior and matches the agreed "boot = hold, not seek" safety principle
-(below). This was a *requested* change (prior turn: "target angle can be ignored if
-epx_configuration is filled in") that the later safety discussion showed to be unsafe — so
-this is a deliberate direction change, not a careless bug.
+**No reversion needed.** Earlier this log proposed reverting the boot-target-from-gear and a
+"boot = hold, not seek" change — **that was wrong** and is withdrawn. Keep the stored-turns +
+gear-target design.
 
-**Keep (not regressions):**
-- `3fb07ed` `angle_old` prime-from-first-reading: the original `angle_old = target_angle %
-  360` had a latent bug — a *negative* saved target (e.g. -7359 % 360 = -159) vs a 0–360
-  reading trips a false 180° wrap and decrements `current_rotations` on the first sample.
-  The prime fix removes that. Keep it.
-- `1a068c8` persist-gear-on-shift and `3fb07ed` save-on-rotation-change are additive
-  (more-frequent saves). Keep them.
+**Keep (genuine fixes/improvements):**
+- `3fb07ed` `angle_old` prime-from-first-reading: the older `angle_old = target_angle % 360`
+  had a latent bug — a *negative* saved target (e.g. -7359 % 360 = -159) vs a 0–360 reading
+  trips a false 180° wrap and miscounts a turn on the first sample. The prime fix removes that.
+- `1a068c8` persist-gear-on-shift and `3fb07ed` save-on-rotation-change: additive, more
+  frequent turn-count/gear persistence — aligned with the store-turns-often method.
+
+**`target_angle` is vestigial** (remnant of the angle-only era); position+target come from
+turns+gear. Candidate for removal in a future cleanup (struct change → flash migration).
 
 ---
 
-## Open design — safe position-loss recovery (UNRESOLVED — resume here)
+## Position-loss handling — RESOLVED: store-turns (Campagnolo method)
 
-Context: the sin/cos sensor is absolute only within one 360° turn; `current_rotations` is
-the multi-turn count and is lost on abrupt power-off (see "Known risk" in CLAUDE.md). The
-**rejected** idea was auto-home-to-hard-stop on boot — correctly vetoed because a reboot
-mid-ride would fling the derailleur into the spokes/off the cassette (injury risk).
+The accepted approach is the **store-turns-to-flash** method (implemented; see
+[PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)): persist `current_rotations` + `current_gear`
+frequently; on boot reconstruct `position = stored_rotations·360 + sensor` and target from
+`gear_pos[current_gear]`. It is the lowest-risk method for on-bike power loss because the
+derailleur is not easily back-driven (a power cut loses only a few degrees).
 
-**Agreed safety principle:** the controller must never make a large or blind autonomous
-move. A *position-uncertain* state should **freeze shifting and hold position** — worst
-case "stuck in gear," never "throws the chain." All recovery is rider-initiated in a safe
-context (on a stand), via calibration.
+**Settled decisions:**
+- **No autonomous homing** to a hard stop, ever (a reboot mid-ride must not fling the
+  derailleur). This stays vetoed.
+- Recovery from an inconsistent turn count = **deliberate recalibration on a stand**; the
+  `c` calibration entry also clears a latched fault and holds position (escape hatch).
+- The earlier "boot = hold / soft-limits / uncertainty-flag" proposal is **not** the
+  direction — deferring to the store-turns design.
 
-**Proposed mechanisms (no autonomous motion), pending decision:**
-1. **Boot = hold, not seek** (= the regression reversion above).
-2. **Soft limits:** clamp every commanded target to `gear_pos[0]…gear_pos[last]` ± margin
-   so even a normal shift can't seek a hard stop.
-3. **Plausibility / uncertainty flag:** if measured position disagrees with stored gear by
-   more than ~1.5 cog spacings (or last shutdown was unsafe), enter "needs recalibration":
-   shifting disabled, surfaced over console/BLE, cleared only by deliberate recalibration.
-4. **Minimize loss:** frequent saves (done) + optionally a power-fail-comparator last-gasp
-   save and/or hardware hold-up cap so the turn count is rarely lost.
-
-**Unknowns needed from the user before building #3/#4:**
-- **Mechanical ratio:** sensor turns across full gear-1→11 travel, and motor angle per cog.
-  Live data suggested ~5 turns total and ~175°/cog ⇒ a lost turn ≈ 2 cogs ⇒ *detectable*
-  by a plausibility check. Confirm the real numbers; if a turn < 1 cog, detection weakens.
-- **Power/hold-up:** supply type and whether there's bulk/supercap capacitance on the rail
-  (decides whether a POF last-gasp save is reliable).
-- **"Is it safe to move?" gate:** preference is "never auto-move; only calibration does
-  large moves" vs using the (unpopulated) LIS2DTW accelerometer to gate on stationary.
-  Leaning "never."
+**Deferred (future, low priority):**
+- **180° rollover edge case:** ±1-turn ambiguity if power is lost exactly at the wrap
+  boundary. Future mitigation (boundary hysteresis / bias) — not common.
+- Optional hardening only if ever wanted: a power-fail-comparator last-gasp save and/or a
+  hold-up cap to further shrink the loss window. Needs the supply/hold-up details.
+- `target_angle` cleanup (remove the vestigial field; struct change → flash migration).
 
 ---
 
@@ -137,22 +130,24 @@ of: MSYS2/MinGW-w64, or build under WSL, or run it in CI. Then `make -C test run
 Each case is intended to run in the SIL first (pure logic), then be spot-checked on
 hardware. "HW" notes the hardware procedure.
 
-### Startup / boot
-- **S1 Hold, no slam:** with a *wrong* stored turn count, boot must NOT drive into a stop
-  (after the reversion: holds current position). HW: power-cycle, `?` shows small err, HLD.
-- **S2 Resume valid gear:** with a *consistent* stored position, boot holds at the right
-  gear (tgt ≈ pos). HW: settle in a gear, clean reboot, `?` matches.
+### Startup / boot (store-turns recovery)
+- **S1 Reconstruct + tiny move:** with a *consistent* stored turn count, boot computes
+  `pos = stored_rotations·360 + sensor` and targets `gear_pos[current_gear]`; since the
+  derailleur wasn't back-driven, the on-boot move is small. HW: settle, power-cycle, `?`
+  shows tgt≈pos, small err.
+- **S2 Inconsistent turns → recalibration:** if the stored turns are wrong, boot can target
+  far off (and may fault into a stop). The accepted recovery is `c` recalibration — verify
+  it restores S1. (This is the bench state we hit; not a normal on-bike case.)
 - **S3 First-sample no miscount:** boot doesn't spuriously ±360 the turn count, incl. a
   negative saved target. HW: `?` pos stable across reset (verified for `3fb07ed`).
 
 ### Power loss / random reboot
-- **P1 Reboot at rest:** position + gear exactly retained (saved on settle).
-- **P2 Reboot mid-move (no turn crossing):** within-turn angle is read fresh; small error;
-  no large move.
-- **P3 Reboot mid-move across a turn boundary:** turn count saved on crossing keeps
-  absolute position within one save-window; quantify worst-case error.
-- **P4 Unsafe-shutdown flag (once built):** boot enters "needs recalibration", shifting
-  disabled, no motion.
+- **P1 Reboot at rest:** position + gear exactly retained (saved on settle/idle).
+- **P2 Reboot mid-move (no turn crossing):** within-turn angle read fresh; small error.
+- **P3 Reboot mid-move across a turn boundary:** turn count saved on crossing keeps absolute
+  position within one save-window; quantify worst-case error.
+- **P4 Rollover edge case (deferred):** power lost with the within-turn angle at the 180°
+  wrap ⇒ ±1-turn ambiguity. Document/measure; mitigation is future work.
 
 ### Calibration
 - **C1 Capture + interpolate:** capture gear 2 & 10, profile-fit fills 11 positions; persists.
@@ -168,12 +163,10 @@ hardware. "HW" notes the hardware procedure.
 - **H3 Multi-shift (button hold):** repeated LONG events step multiple gears, bounded to ends.
 - **H4 Gear persisted on shift:** shift then immediate reboot keeps the new gear (`1a068c8`).
 
-### Overcurrent / end-stop / limits
+### Overcurrent / end-stop
 - **O1 Stall→fault:** ISENSE over limit for N samples ⇒ drive 0, driver asleep, motion
   inhibited; `nFault` pin also faults. HW: low `xl`, command a move into a stop.
 - **O2 Clear:** `x` (and calibration) clears the latch.
-- **O3 Soft limits (once built):** a normal shift never commands past gear-1/gear-11 ± margin.
-- **O4 Plausibility (once built):** an implausibly far target ⇒ uncertainty flag, hold.
 
 ### Control quality (after tuning)
 - **Q1 No overshoot/overshift on a step** (SIL assert already present).
@@ -185,9 +178,10 @@ hardware. "HW" notes the hardware procedure.
 
 | Commit | Summary |
 |--------|---------|
-| (this) | add DEVLOG engineering log (session summary, regression analysis, safety design, test plan); wire into commit workflow |
+| (this) | add PROJECT_OVERVIEW.md (store-turns position design); correct boot-slam analysis (not a regression) |
+| (prev) | add DEVLOG engineering log (session summary, analysis, test plan); wire into commit workflow |
 | `f50ea34` | escape overcurrent fault by entering calibration (clear + hold) — HW verified |
-| `0d64e2d` | boot target from gear table; fix reversed cal jog — **boot-slam regression (boot-target half)** |
+| `0d64e2d` | boot target from stored gear (Campagnolo recovery method); fix reversed cal jog |
 | `1a068c8` | persist current gear on shift so reboot keeps the gear |
 | `3fb07ed` | persist turn count on change; fix boot angle seed; document multi-turn risk |
 | `62d54f0` | add debug monitor (`?`/`v`) and guided button calibration |
