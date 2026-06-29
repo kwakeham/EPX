@@ -73,6 +73,9 @@ After each meaningful, **tested** unit of work, make a focused commit and **push
 - Don't commit build artifacts — `.gitignore` already excludes `_build/` and the DFU settings hex.
 - End every commit message with:
   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
+- **Add a one-line entry to the commit-history table in [DEVLOG.md](DEVLOG.md)** and, when behavior or
+  design changes, update the relevant DEVLOG section. DEVLOG is the narrative history + open design
+  threads + test plan; keep it current so a fresh session can follow the work.
 
 "Meaningful + tested" is a judgment call (it built, and where possible ran on hardware), so this is a
 working agreement here rather than an automated hook.
