@@ -26,12 +26,15 @@
 /**
  * @brief Overtravel applied when shifting into a gear, then held (dwell) before
  *        settling back to the gear's rest position.
- *        overshift == 0 means: no overtravel AND no dwell (skip entirely).
- *        Units: overshift in the same angle units as gear_pos; dwell in ms.
+ *        overshift_pm == 0 means: no overtravel AND no dwell (skip entirely).
+ *        Units: overshift_pm is per-mille (1/1000) of the shift's gear-to-gear
+ *        distance, so the actual overtravel scales with the (calibrated) spacing
+ *        and is robust to recalibration; the direction is taken from the signed
+ *        shift distance at runtime. dwell in ms.
  */
 typedef struct
 {
-    int16_t overshift;
+    int16_t overshift_pm;
     int16_t dwell_ms;
 } overshift_t;
 

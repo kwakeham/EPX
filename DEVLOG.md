@@ -42,6 +42,50 @@ needs tuning). Gear table is calibrated but the stored absolute position is curr
 
 ---
 
+## Overshift format + calibration ergonomics (2026-06-29)
+
+Captured the real shifting behaviour from `Shifting.md` and fixed two bench ergonomics issues.
+
+**Overshift is now per-mille of the shift distance (was an absolute angle).** The storage shape
+was already right — `rear_overshift[gear][front][dir]` keyed by the destination gear, which for
+single-step shifts *is* the transition — so only the units and defaults changed:
+- `overshift_t.overshift` → `overshift_pm` ([derailleur.h](libraries/derailleur.h)): per-mille of
+  the shift's gear-to-gear distance.
+- Shift compute ([data_handler.c](libraries/data_handler.c) `data_handler_shift_gear_handler`):
+  `signed_overshift = overshift_pm * (final_pos - prev_pos) / 1000`. The signed span gives the
+  direction automatically, so the old `(final>=prev)?+:-` branch is gone. This makes the overshoot
+  scale with the calibrated spacing and survive recalibration.
+- `o` command now takes/lists per-mille: `o <gear> <front> <dir> <permille> <dwell_ms>`.
+- **Seeded defaults** from the measured EPS table ([titan_mem.c](titan_mem.c) `EPX_CONFIG_DEFAULTS`),
+  dwell 1200 ms. The table is direction-**asymmetric**: upshifts into g7–g11 need no overshift while
+  the matching downshifts do. `CONFIG_VERSION 2 → 3` (resets the **config** to these defaults →
+  one recalibration needed; the **position record / turn count is a separate, unversioned record and
+  is preserved**).
+
+**Gear profile populated** ([derailleur.c](libraries/derailleur.c)): `gear_profile_nominal[]` now
+holds the measured non-linear EPS spacing instead of the even-spacing placeholder, so the 9
+interpolated gears land more accurately (calibration still affine-fits via captured gear 2 & 10).
+
+**Calibration jog ~3× faster** ([data_handler.c](libraries/data_handler.c)): `CALIB_JOG_FINE` 5→15,
+`CALIB_JOG_COARSE` 30→90 (~450°/s while held; ~90° coast after release).
+
+**Btn3 calibration entry now needs a deliberate ~2 s hold** ([data_handler.c](libraries/data_handler.c)):
+`LONGPRESS_INTERVAL_MS` (200 ms) is shared by all buttons, so instead of slowing it, calibration
+entry counts `CALIB_ENTER_LONG_TICKS` (10) consecutive `CH3_LONG` events and resets on `CH3_RELEASE`.
+Btn1/Btn2 jog/shift long-press timing is unchanged.
+
+**Memory-format investigation (requested):** all four intended turn-count save triggers already exist
+(settle, turn-crossing, shift, BLE disconnect) — no missing trigger. This feature only touches the
+**config** record; the turn count lives in the unversioned position record and is untouched. Noted
+pre-existing gaps (not fixed here): the position record has no version guard, and saves are async
+(power-loss write window) — both already tracked as deferred items below.
+
+**Status:** builds clean (arm-none-eabi-gcc, no warnings). **Not yet flashed/HW-verified** — next:
+`make flash_dfu`, recalibrate once (config reset), confirm turn count survived, and exercise the
+overshift table per the test plan.
+
+---
+
 ## Boot-slam analysis (#1) — corrected: NOT a code regression
 
 **Symptom:** on boot the derailleur drove hard into an end-of-travel stop and latched an
@@ -178,8 +222,9 @@ hardware. "HW" notes the hardware procedure.
 
 | Commit | Summary |
 |--------|---------|
-| (this) | add PROJECT_OVERVIEW.md (store-turns position design); correct boot-slam analysis (not a regression) |
-| (prev) | add DEVLOG engineering log (session summary, analysis, test plan); wire into commit workflow |
+| (this) | store overshift as per-mille of shift distance; seed EPS overshift table + gear profile; faster cal jog; ~2 s Btn3 hold to enter cal (CONFIG_VERSION 3) |
+| `306027b` | add PROJECT_OVERVIEW.md (store-turns position design); correct boot-slam analysis (not a regression) |
+| `dbad51f` | add DEVLOG engineering log (session summary, analysis, test plan); wire into commit workflow |
 | `f50ea34` | escape overcurrent fault by entering calibration (clear + hold) — HW verified |
 | `0d64e2d` | boot target from stored gear (Campagnolo recovery method); fix reversed cal jog |
 | `1a068c8` | persist current gear on shift so reboot keeps the gear |

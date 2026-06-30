@@ -88,14 +88,31 @@ static struct
  * wipe / CONFIG_VERSION bump, restore a usable config by re-running calibration
  * and re-tuning. PID starting points and the sin/cos calibration reference are
  * commented in libraries/mpos.c (mpos_init / the sin_min..cos_max block). */
-#define EPX_CONFIG_DEFAULTS                 \
-{                                           \
-    .config_version     = CONFIG_VERSION,   \
-    .num_gears          = NUM_REAR_GEARS,   \
-    .ref_lo_idx         = GEAR_REF_LO_IDX,  \
-    .ref_hi_idx         = GEAR_REF_HI_IDX,  \
-    .isense_limit       = 2000,             \
-    .isense_fault_count = 8,                \
+/* Measured EPS overshift table (Shifting.md), front 0 only. Each entry is
+ * per-mille of the shift's gear-to-gear distance + dwell ms, indexed by the
+ * destination gear; order is { DIR_UP, DIR_DOWN } (DIR_UP=0, DIR_DOWN=1).
+ * Note the asymmetry: upshifts into g7..g11 need no overshift, the matching
+ * downshifts do. g11 (idx 10) has neither and is left zero. */
+#define EPX_CONFIG_DEFAULTS                                                  \
+{                                                                           \
+    .config_version     = CONFIG_VERSION,                                   \
+    .num_gears          = NUM_REAR_GEARS,                                   \
+    .ref_lo_idx         = GEAR_REF_LO_IDX,                                  \
+    .ref_hi_idx         = GEAR_REF_HI_IDX,                                  \
+    .isense_limit       = 2000,                                             \
+    .isense_fault_count = 8,                                                \
+    .rear_overshift = {                                                     \
+        [0] = {{ {  0,    0}, {112, 1200} }},  /* g1  up none / dn */       \
+        [1] = {{ {277, 1200}, {426, 1200} }},  /* g2 */                     \
+        [2] = {{ {393, 1200}, {370, 1200} }},  /* g3 */                     \
+        [3] = {{ {425, 1200}, {335, 1200} }},  /* g4 */                     \
+        [4] = {{ {416, 1200}, {381, 1200} }},  /* g5 */                     \
+        [5] = {{ {436, 1200}, { 61, 1200} }},  /* g6 */                     \
+        [6] = {{ {  0,    0}, {105, 1200} }},  /* g7  up none / dn */       \
+        [7] = {{ {  0,    0}, {195, 1200} }},  /* g8 */                     \
+        [8] = {{ {  0,    0}, { 50, 1200} }},  /* g9 */                     \
+        [9] = {{ {  0,    0}, { 44, 1200} }},  /* g10 */                    \
+    },                                                                      \
 }
 
 /* Configuration data. */

@@ -35,10 +35,17 @@ static int32_t ref_lo = 0, ref_hi = 0;
 static bool    ref_lo_set = false, ref_hi_set = false;
 
 // Guided calibration: jog to gear 2 / gear 10 with the buttons, capture with btn3.
-#define CALIB_JOG_FINE   5    // degrees per button tap
-#define CALIB_JOG_COARSE 30   // degrees per repeated long-press tick
+#define CALIB_JOG_FINE   15   // degrees per button tap
+#define CALIB_JOG_COARSE 90   // degrees per repeated long-press tick (~450 deg/s while held)
 static bool calibrating = false;
 static int  calib_step  = 0;  // 0 = awaiting gear 2, 1 = awaiting gear 10
+
+// Entering calibration must be deliberate: require Btn3 held for N consecutive
+// CH3_LONG events before it triggers. CH3_LONG repeats every LONGPRESS_INTERVAL_MS
+// (200 ms in multi_btn.c), so 10 ticks ~= 2 s. This is decoupled from the shared
+// long-press interval so Btn1/Btn2 jog/shift repeat stays fast.
+#define CALIB_ENTER_LONG_TICKS 10
+static uint8_t calib_long_count = 0;
 
 static char command_message[CMD_LENGTH] = {};
 
@@ -111,8 +118,12 @@ void data_handler_button_event_handler(multibtn_event_t evt)
         data_handler_shift_gear_handler(false, -1);
 		break;
 
-	case MULTI_BTN_EVENT_CH3_LONG:   // hold mode -> enter guided calibration
-        data_handler_calibration_enter();
+	case MULTI_BTN_EVENT_CH3_LONG:   // hold mode -> enter guided calibration (deliberate ~2 s hold)
+        if (++calib_long_count >= CALIB_ENTER_LONG_TICKS)
+        {
+            calib_long_count = 0;
+            data_handler_calibration_enter();
+        }
 		break;
 
 	case MULTI_BTN_EVENT_CH4_LONG:
@@ -125,6 +136,7 @@ void data_handler_button_event_handler(multibtn_event_t evt)
 		break;
 
 	case MULTI_BTN_EVENT_CH3_RELEASE:
+        calib_long_count = 0;   // released before the hold threshold; restart the count
 		break;
 
 	case MULTI_BTN_EVENT_CH4_RELEASE:
@@ -211,7 +223,7 @@ void data_handler_command_processor(void)
         telemetry_set_rate((uint16_t)data_handler_command_number_return(1));
         break;
 
-    case 0x6F: //o Overshift/dwell: "o <gear> <front> <dir> <overshift> <dwell_ms>"
+    case 0x6F: //o Overshift/dwell: "o <gear> <front> <dir> <permille> <dwell_ms>"
         NRF_LOG_INFO("little o");
         data_handler_overshift_command();
         break;
@@ -318,8 +330,10 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
         int new_gear = epx_position.current_gear;
         int32_t final_pos = epx_configuration.gear_pos[new_gear];
 
-        // Look up overshift for this gear / front position / direction; apply it
-        // in the direction of travel. overshift==0 => plain move, no dwell.
+        // Look up overshift for this gear / front position / direction. It is
+        // stored as per-mille of the shift's gear-to-gear distance; multiplying
+        // by the signed span gives the overtravel in the direction of travel
+        // automatically. overshift_pm==0 => plain move, no dwell.
         int16_t  signed_overshift = 0;
         uint16_t dwell_ticks      = 0;
         int front = epx_position.current_front;
@@ -327,10 +341,10 @@ void data_handler_shift_gear_handler(bool command, int shift_count)
         {
             int dir = (new_gear > old_gear) ? DIR_UP : DIR_DOWN;
             overshift_t os = epx_configuration.rear_overshift[new_gear][front][dir];
-            if (os.overshift != 0)
+            if (os.overshift_pm != 0)
             {
-                int32_t prev_pos = epx_configuration.gear_pos[old_gear];
-                signed_overshift = (final_pos >= prev_pos) ? os.overshift : (int16_t)(-os.overshift);
+                int32_t span = final_pos - epx_configuration.gear_pos[old_gear]; // signed travel distance
+                signed_overshift = (int16_t)(((int32_t)os.overshift_pm * span) / 1000);
                 dwell_ticks      = (uint16_t)(((int32_t)os.dwell_ms * 256) / 1000);
             }
         }
@@ -522,14 +536,14 @@ void data_handler_overshift_command(void)
     if (got < 5) // not a full set => list the table for the current front position
     {
         int front = epx_position.current_front;
-        sprintf(buff1, "Overshift front %d (gear: up/dn over,dwell):", front);
+        sprintf(buff1, "Overshift front %d (gear: up/dn pm,dwell):", front);
         nus_data_send((uint8_t *)buff1, strlen(buff1));
         for (int i = 0; i < NUM_REAR_GEARS; i++)
         {
             overshift_t u = epx_configuration.rear_overshift[i][front][DIR_UP];
             overshift_t dn = epx_configuration.rear_overshift[i][front][DIR_DOWN];
             sprintf(buff1, "g%d: u %d,%d  d %d,%d", i + 1,
-                    u.overshift, u.dwell_ms, dn.overshift, dn.dwell_ms);
+                    u.overshift_pm, u.dwell_ms, dn.overshift_pm, dn.dwell_ms);
             nus_data_send((uint8_t *)buff1, strlen(buff1));
         }
         return;
@@ -543,11 +557,11 @@ void data_handler_overshift_command(void)
         return;
     }
 
-    epx_configuration.rear_overshift[gi][f][d].overshift = (int16_t)over;
-    epx_configuration.rear_overshift[gi][f][d].dwell_ms  = (int16_t)dwell;
+    epx_configuration.rear_overshift[gi][f][d].overshift_pm = (int16_t)over;
+    epx_configuration.rear_overshift[gi][f][d].dwell_ms     = (int16_t)dwell;
     update_config_flash = true;
 
-    sprintf(buff1, "Set g%d f%d %s over %d dwell %d", g, f, d ? "dn" : "up", over, dwell);
+    sprintf(buff1, "Set g%d f%d %s pm %d dwell %d", g, f, d ? "dn" : "up", over, dwell);
     nus_data_send((uint8_t *)buff1, strlen(buff1));
 }
 
@@ -596,6 +610,7 @@ void data_handler_calibration_enter(void)
 {
     calibrating = true;
     calib_step  = 0;
+    calib_long_count = 0;  // consume the hold so it doesn't immediately re-trigger
     shift_mode  = false;   // angle mode so the buttons jog and gears don't shift
 
     // Escape hatch: a bad stored position can drive into an end-of-travel hard

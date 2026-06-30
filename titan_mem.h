@@ -16,8 +16,10 @@
 #include "derailleur.h"
 
 /* Bump when the layout/semantics of epx_configuration_t change. On load, a
- * mismatch triggers a reset to defaults (see tm_fds_config_init). */
-#define CONFIG_VERSION 2
+ * mismatch triggers a reset to defaults (see tm_fds_config_init).
+ * v3: rear_overshift overshift field is now per-mille of the shift distance
+ *     (was an absolute angle); seeded with the measured EPS table by default. */
+#define CONFIG_VERSION 3
 
 /* A dummy structure to save in flash. */
 typedef struct

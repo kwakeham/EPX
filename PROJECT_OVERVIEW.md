@@ -77,16 +77,23 @@ already is. The on-boot move is therefore tiny in normal use.
 - **Motor sleep** ([motor_sm.c](libraries/motor_sm.c)): explicit HOLDING/MOVING state machine;
   driver sleeps once settled in band.
 - **Overshift/dwell** ([shift_seq.c](libraries/shift_seq.c)): optional overtravel → dwell →
-  settle per gear / front position / direction.
+  settle per gear / front position / direction. The overshift is stored as **per-mille of the
+  shift's gear-to-gear distance** (not an absolute angle), so the overtravel scales with the
+  calibrated spacing and gets its sign from the direction of travel; the table is direction-
+  asymmetric and seeded from the measured EPS values ([Shifting.md](Shifting.md)). Set/list with
+  `o <gear> <front> <dir> <permille> <dwell_ms>`.
 - **Overcurrent fault**: ISENSE (AIN1) over a configurable limit, or the DRV8874 `nFault`
   pin, latches a fault that stops drive and inhibits motion until cleared (`x` or calibration).
 
 ## Gears & calibration (brief)
 
 Capture **gear 2** and **gear 10** (`g l` / `g h`, or guided `c` + buttons), then affine-fit
-an editable nominal cog profile ([gears.c](libraries/gears.c), [derailleur.h](libraries/derailleur.h))
-to fill all 11 positions (`g i`). Gear table, overshift/dwell, gains, ISENSE limits, and the
-position record all persist to flash; tuning lives in flash, not source.
+the nominal cog profile ([gears.c](libraries/gears.c), [derailleur.c](libraries/derailleur.c)) to
+fill all 11 positions (`g i`). The profile is the **measured (non-linear) EPS 11-speed spacing**
+([Shifting.md](Shifting.md)); calibration only scales/offsets it to the two captured references, so
+absolute scale and offset stay per-bike. Gear table, overshift/dwell, gains, ISENSE limits, and the
+position record all persist to flash; tuning lives in flash, not source. Guided calibration is
+entered by a deliberate **~2 s Btn3 hold** (so it isn't triggered by a normal mode tap).
 
 ## Interfaces (brief)
 
