@@ -114,6 +114,17 @@ class LogSession:
         d.mkdir(exist_ok=True)
         (d / "cal.json").write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")
 
+    def write_json(self, name: str, obj) -> None:
+        (self.dir / name).write_text(json.dumps(obj, indent=2), encoding="utf-8")
+
+    def write_rows_csv(self, name: str, rows) -> None:
+        with open(self.dir / name, "w", newline="", encoding="utf-8") as f:
+            f.write(CSV_HEADER + "\n")
+            w = csv.writer(f)
+            for r in rows:
+                w.writerow([r.t_ms, r.target_cd, r.current_cd, r.error_cd, r.drive,
+                            r.integral_cd, r.state, r.isense, r.fault])
+
     def write_summary(self) -> None:
         (self.dir / "summary.md").write_text(
             report.format_summary_md(self._records), encoding="utf-8")

@@ -12,7 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import calibrate, commands, moves, probe, protocol, reset
+from . import calibrate, commands, moves, probe, protocol, reset, sysid
 from .context import Context
 from .link import SerialLink
 from .logging_ import LogSession
@@ -345,6 +345,53 @@ def cmd_run_all(args) -> int:
         log(f"logs: {session.dir}")
 
 
+def cmd_characterize(args) -> int:
+    log = _log(args.verbose)
+    session = new_session(args, "characterize")
+    try:
+        link = connect(args, session)
+    except probe.NoDeviceError as e:
+        log(f"ERROR: {e}")
+        session.close()
+        return EXIT_COMM
+    try:
+        session.write_meta(collect_meta(link, args))
+        commands.clear_fault(link)
+        cfg = sysid.CharacterizeConfig(
+            ramp_max_drive=args.max_drive, step_drive=args.step_drive,
+            isense_abort=args.isense_abort)
+        log("== characterize (open-loop system-ID) ==")
+        model, runs = sysid.characterize(link, cfg, log=log)
+
+        # Seed-gain suggestions across a few bandwidths (derived from the plant pole).
+        suggestions = []
+        if model.tau_s:
+            for k in (1.0, 2.0, 4.0):
+                s = sysid.suggest_gains(model, wn_rad_s=k / model.tau_s, zeta=1.0)
+                if s:
+                    suggestions.append(s)
+
+        session.write_json("sysid.json",
+                           {"plant": model.to_dict(), "suggested_gains": suggestions})
+        for name in ("up", "dn", "step"):
+            session.write_rows_csv(f"sysid_{name}.csv", runs[name])
+
+        log("")
+        log(f"  breakaway drive: +{model.breakaway_pos} / -{model.breakaway_neg} duty")
+        log(f"  viscous b      : {model.viscous_b}  duty/(deg/s)  (fit r2={model.friction_r2})")
+        log(f"  coulomb D_c    : {model.coulomb_dc} duty")
+        log(f"  time constant  : {model.tau_s} s   inertia J={model.inertia_j}")
+        log("  suggested seed gains (refine closed-loop with autotune):")
+        for s in suggestions:
+            log(f"    wn={s['wn_rad_s']:.1f} rad/s  Kp={s['Kp']}  Ki={s['Ki']}  Kd={s['Kd']}")
+        log(f"  logs: {session.dir}")
+        ok = model.viscous_b is not None and model.tau_s is not None
+        return EXIT_OK if ok else EXIT_TESTFAIL
+    finally:
+        link.close()
+        session.close()
+
+
 def cmd_replay(args) -> int:
     from . import offline
     summary = offline.replay_transcript(args.path)
@@ -423,6 +470,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--skip-reset", action="store_true")
     sp.add_argument("--tests", default=None, help="comma list (default: all registered)")
     sp.set_defaults(func=cmd_run_all)
+
+    sp = sub.add_parser("characterize", help="open-loop system-ID -> plant model + seed gains")
+    sp.add_argument("--max-drive", type=int, default=150, dest="max_drive",
+                    help="peak open-loop duty for the friction ramps (0-400)")
+    sp.add_argument("--step-drive", type=int, default=120, dest="step_drive",
+                    help="open-loop duty for the inertia step")
+    sp.add_argument("--isense-abort", type=int, default=None, dest="isense_abort",
+                    help="abort if raw ISENSE reaches this (safety on a loaded rig)")
+    sp.set_defaults(func=cmd_characterize)
 
     sp = sub.add_parser("replay", help="offline: summarise a transcript.log")
     sp.add_argument("path")

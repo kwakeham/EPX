@@ -141,6 +141,11 @@ def cmd_reboot() -> str:
     return "r"
 
 
+def cmd_open_loop(drive: int) -> str:
+    """Raw open-loop drive (bench system-ID). Refresh faster than the ~250ms watchdog."""
+    return f"u{int(drive)}"
+
+
 def cmd_overshift(gear: int, front: int, direction: int, pm: int, dwell_ms: int) -> str:
     """Set an overshift table entry (gear is 1-based per the firmware)."""
     return f"o {int(gear)} {int(front)} {int(direction)} {int(pm)} {int(dwell_ms)}"
