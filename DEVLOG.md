@@ -218,11 +218,42 @@ hardware. "HW" notes the hardware procedure.
 
 ---
 
+## HIL bench harness (`tools/epx_hil/`)
+
+Python (`pyserial`) hardware-in-the-loop harness that drives the console and turns
+the plan above into repeatable, logged runs. It is the bench-side complement to the
+host SIL in `test/` (SIL = pure logic vs a sim plant; HIL = real firmware on real
+hardware). Run `python -m epx_hil <cmd>` from `tools/`; `README.md` has the details.
+
+- **Reads the firmware's own instrumentation:** one UART carries command replies,
+  the `y` CSV telemetry, and the `e` `#event` HIL log; the reader thread demuxes by
+  line shape. `#boot/#shift/#turn/#save/#cal/#fault` are ground-truth cross-checks.
+- **Per-move metrics** (overshoot vs the *final* gear position, settle time from the
+  MOV→HLD edge, steady-state error, turns vs `#turn` count, peak/hold ISENSE) →
+  `summary.md/.csv` under a never-overwritten `logs/<date>/<time>_<label>/` folder.
+- **Two-point calibration** is automated with bounded relative jogs (safety cap +
+  stall/fault abort), mirroring the `gl`/`gh`/`gi` console path, then `s9` to seat
+  gear 10 without a fling — automates **C1**, and the fault-escape path around **C3**.
+- **Coverage of the plan:** far/sweep moves + repeatability (**H1/H2**, control
+  quality **Q1/Q2**); `test safety` = overcurrent latch/clear (**O1/O2**), reboot
+  mid-hold recovery (**P1–P3**, **S1**), boot-slam (no fling); `test tuning` =
+  step-response/PID, hold current, loop-timing jitter; `test endurance` = g1↔g11
+  cycling + flash-persistence stress.
+- **Offline-testable:** parsers + metric math run with no hardware (`pytest epx_hil`);
+  old logs can be re-scored via `epx_hil.offline`.
+
+Open follow-ups: **P4** (180° rollover ±1 turn) needs a precise power-cut trigger the
+harness can't yet force; telemetry `current` is absolute angle but there is no explicit
+`rot` column (reconstructed as `floor(current/360)` — add a column if a case needs it).
+
+---
+
 ## Commit history (reverse chronological)
 
 | Commit | Summary |
 |--------|---------|
-| (this) | add console `r` reboot command (deferred reset flushes pending flash + reply; emits `#boot` on restart) for the HIL harness |
+| (this) | add Python HIL harness (`tools/epx_hil/`): serial demux, autodetect, two-point calibration FSM, telemetry capture + per-move metrics, timestamped logs, CLI; offline pytest |
+| `0e06455` | add console `r` reboot command (deferred reset flushes pending flash + reply; emits `#boot` on restart) for the HIL harness |
 | `b0061a1` | store overshift as per-mille of shift distance; seed EPS overshift table + gear profile; faster cal jog; ~2 s Btn3 hold to enter cal (CONFIG_VERSION 3) |
 | `306027b` | add PROJECT_OVERVIEW.md (store-turns position design); correct boot-slam analysis (not a regression) |
 | `dbad51f` | add DEVLOG engineering log (session summary, analysis, test plan); wire into commit workflow |

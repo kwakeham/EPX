@@ -1,0 +1,4 @@
+pyserial>=3.5
+# Optional (imported lazily; the harness degrades gracefully without them):
+#   matplotlib   # per-move plots (report.py)
+#   pytest       # offline unit tests (test_protocol.py, test_metrics.py)
