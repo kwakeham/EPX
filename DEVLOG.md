@@ -222,7 +222,8 @@ hardware. "HW" notes the hardware procedure.
 
 | Commit | Summary |
 |--------|---------|
-| (this) | store overshift as per-mille of shift distance; seed EPS overshift table + gear profile; faster cal jog; ~2 s Btn3 hold to enter cal (CONFIG_VERSION 3) |
+| (this) | add console `r` reboot command (deferred reset flushes pending flash + reply; emits `#boot` on restart) for the HIL harness |
+| `b0061a1` | store overshift as per-mille of shift distance; seed EPS overshift table + gear profile; faster cal jog; ~2 s Btn3 hold to enter cal (CONFIG_VERSION 3) |
 | `306027b` | add PROJECT_OVERVIEW.md (store-turns position design); correct boot-slam analysis (not a regression) |
 | `dbad51f` | add DEVLOG engineering log (session summary, analysis, test plan); wire into commit workflow |
 | `f50ea34` | escape overcurrent fault by entering calibration (clear + hold) — HW verified |

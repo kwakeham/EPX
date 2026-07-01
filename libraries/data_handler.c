@@ -19,6 +19,7 @@
 #include "gears.h"
 #include "telemetry.h"
 #include "evt_log.h"
+#include "nrf_delay.h"
 
 #define NRF_LOG_MODULE_NAME datahandler
 #define NRF_LOG_LEVEL       3
@@ -59,6 +60,11 @@ epx_position_configuration_t epx_position;
 
 bool update_config_flash = false; //Update the flash memory from the main loop
 bool update_pos_flash = false; //Update the flash memory from the main loop
+
+// Deferred reboot request (console 'r'). The reset is performed at the tail of
+// data_handler_sch_execute() so any pending flash writes serviced there (and the
+// "Rebooting" reply) drain first, rather than yanking the MCU mid-command.
+static bool reboot_requested = false;
 
 bool shift_mode = true; //if true then we are in a gear mode, if false we're in an angle mode
 uint8_t long_mode_count = 0;
@@ -213,6 +219,7 @@ static void cmd_overshift(const char *args);
 static void cmd_fault(const char *args);
 static void cmd_force_save(const char *args);
 static void cmd_calibrate(const char *args);
+static void cmd_reboot(const char *args);
 static void cmd_telemetry(const char *args);
 static void cmd_monitor(const char *args);
 static void cmd_events(const char *args);
@@ -233,6 +240,7 @@ static const dh_cmd_t DH_COMMANDS[] = {
     {'x', cmd_fault,      "x|xl|xc    fault clear / isense limit / count"},
     {'f', cmd_force_save, "fs         force flash save"},
     {'c', cmd_calibrate,  "c          enter/cancel calibration"},
+    {'r', cmd_reboot,     "r          reboot device (deferred, flushes flash)"},
     {'y', cmd_telemetry,  "y<n>       CSV telemetry divider (0 off)"},
     {'v', cmd_monitor,    "v<n>       verbose monitor divider (0 off)"},
     {'e', cmd_events,     "e<mask>    HIL event categories (0 off, 63 all)"},
@@ -285,6 +293,19 @@ static void cmd_calibrate(const char *args)
     (void)args;
     if (calibrating) data_handler_calibration_cancel();
     else             data_handler_calibration_enter();
+}
+
+// Request a device reboot. The actual reset is deferred to the tail of
+// data_handler_sch_execute() (see reboot_requested) so pending flash writes and
+// this reply drain first. The firmware emits a #boot event on the next start,
+// which the HIL harness uses to confirm the reboot and validate recovery.
+static void cmd_reboot(const char *args)
+{
+    (void)args;
+    evt_log(EVT_BOOT, "#reboot,rot=%ld,gear=%d",
+            (long)epx_position.current_rotations, (int)epx_position.current_gear);
+    dh_reply("Rebooting");
+    reboot_requested = true;
 }
 
 static void cmd_telemetry(const char *args)
@@ -705,6 +726,18 @@ void data_handler_sch_execute(void)
         mem_epx_position_update(epx_position);
         evt_log(EVT_SAVE, "#save,what=pos,rot=%ld,gear=%d",
                 (long)epx_position.current_rotations, (int)epx_position.current_gear);
+    }
+
+    // Deferred reboot (console 'r'): only reset once the flash-update flags above
+    // are clear, so a save requested in the same pass isn't dropped. The queued
+    // FDS write and the UART reply are async, so give them a brief moment to drain
+    // before resetting. NVIC_SystemReset() (CMSIS) is what sd_nvic_SystemReset()
+    // wraps (nrf_nvic.h), so no SoftDevice-specific include is needed.
+    if (reboot_requested && !update_config_flash && !update_pos_flash)
+    {
+        reboot_requested = false;
+        nrf_delay_ms(50);
+        NVIC_SystemReset();
     }
 
 }
