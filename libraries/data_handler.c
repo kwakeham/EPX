@@ -220,6 +220,7 @@ static void cmd_fault(const char *args);
 static void cmd_force_save(const char *args);
 static void cmd_calibrate(const char *args);
 static void cmd_reboot(const char *args);
+static void cmd_openloop(const char *args);
 static void cmd_telemetry(const char *args);
 static void cmd_monitor(const char *args);
 static void cmd_events(const char *args);
@@ -241,6 +242,7 @@ static const dh_cmd_t DH_COMMANDS[] = {
     {'f', cmd_force_save, "fs         force flash save"},
     {'c', cmd_calibrate,  "c          enter/cancel calibration"},
     {'r', cmd_reboot,     "r          reboot device (deferred, flushes flash)"},
+    {'u', cmd_openloop,   "u<n>       open-loop drive (bench sysid; ~250ms watchdog)"},
     {'y', cmd_telemetry,  "y<n>       CSV telemetry divider (0 off)"},
     {'v', cmd_monitor,    "v<n>       verbose monitor divider (0 off)"},
     {'e', cmd_events,     "e<mask>    HIL event categories (0 off, 63 all)"},
@@ -306,6 +308,15 @@ static void cmd_reboot(const char *args)
             (long)epx_position.current_rotations, (int)epx_position.current_gear);
     dh_reply("Rebooting");
     reboot_requested = true;
+}
+
+// Raw open-loop motor drive for bench system-ID (breakaway/friction/inertia).
+// Silent (the harness reads the applied drive back on the telemetry stream).
+// Refresh faster than the ~250 ms watchdog to keep driving; the motor holds its
+// position otherwise, and any t/s command exits open-loop.
+static void cmd_openloop(const char *args)
+{
+    mpos_set_open_loop((int16_t)dh_arg_int(args), 64); // 64 ticks ~= 250 ms @ 256 Hz
 }
 
 static void cmd_telemetry(const char *args)

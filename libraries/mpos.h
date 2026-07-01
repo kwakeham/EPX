@@ -108,6 +108,14 @@ void mpos_link_overcurrent(const int16_t *limit, const uint16_t *count);
  */
 void mpos_shift_to(int32_t final_pos, int16_t signed_overshift, uint16_t dwell_ticks);
 
+/**
+ * @brief Command raw open-loop drive for a bounded window (bench system-ID).
+ *        Bypasses the PID; @p ticks is a watchdog (in 256 Hz control ticks) that
+ *        reverts to holding the current position when it expires. @p drive is
+ *        clamped to the PWM range. Any t/s command also exits open-loop.
+ */
+void mpos_set_open_loop(int16_t drive, uint16_t ticks);
+
 /** Last raw current-sense (ISENSE/AIN1) count. */
 int16_t mpos_isense(void);
 

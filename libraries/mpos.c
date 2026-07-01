@@ -59,6 +59,14 @@ static uint16_t        m_over_count = 0;         // consecutive over-limit sampl
 static int16_t         m_isense = 0;             // last raw current-sense count
 static bool            m_fault = false;          // latched overcurrent/driver fault
 
+// Open-loop drive (bench system-ID via console 'u'). Bypasses the PID for a
+// bounded window; a watchdog (m_openloop_ticks) reverts to holding the current
+// position if the command is not refreshed, so a lost link can't leave the motor
+// driving. Overcurrent stays enforced. Any closed-loop command (t/s) exits it.
+#define MPOS_OPENLOOP_MAX 400                    // matches drv8874 PWM top (100% duty)
+static int16_t         m_openloop_drive = 0;
+static uint16_t        m_openloop_ticks = 0;     // watchdog countdown; 0 = closed-loop
+
 // Human-readable debug monitor pacing (separate from the CSV telemetry)
 static uint16_t        m_mon_div = 0;            // 0 = off, else print every Nth tick
 static uint16_t        m_mon_phase = 0;
@@ -395,6 +403,8 @@ void mpos_update_angle(bool direct, float new_target_angle)
 {
     if (m_fault) return; // motion inhibited until the fault is cleared
 
+    m_openloop_ticks = 0; // a closed-loop target exits open-loop drive
+
     if(direct)
     {
         link_epx_pos->target_angle = new_target_angle;
@@ -413,12 +423,23 @@ void mpos_shift_to(int32_t final_pos, int16_t signed_overshift, uint16_t dwell_t
 {
     if (m_fault) return; // motion inhibited until the fault is cleared
 
+    m_openloop_ticks = 0; // a closed-loop shift exits open-loop drive
+
     link_epx_pos->target_angle = final_pos; // persist the resting position
 
     int32_t first_target;
     shift_seq_start(&m_seq, final_pos, signed_overshift, dwell_ticks, &first_target);
     m_subtarget    = first_target;
     m_arrive_count = 0;
+}
+
+void mpos_set_open_loop(int16_t drive, uint16_t ticks)
+{
+    if (m_fault) return;                 // don't drive into a latched fault
+    if (drive >  MPOS_OPENLOOP_MAX) drive =  MPOS_OPENLOOP_MAX;
+    if (drive < -MPOS_OPENLOOP_MAX) drive = -MPOS_OPENLOOP_MAX;
+    m_openloop_drive = drive;
+    m_openloop_ticks = ticks;
 }
 
 float mpos_calculate_angle(void)
@@ -474,6 +495,31 @@ void mpos_motor_drive(void)
         drv8874_nsleep(0);
         shift_seq_init(&m_seq);
         telemetry_tick((float)m_subtarget, current, 0.0f, m_pid.integral, (int)m_sm.state, m_isense, true);
+        return;
+    }
+
+    // Open-loop drive (console 'u'): bypass the PID for bench system-ID. The
+    // watchdog reverts to holding the current position if the command is not
+    // refreshed, so a dropped link stops the motor. (Overcurrent enforced above.)
+    if (m_openloop_ticks > 0)
+    {
+        m_openloop_ticks--;
+        if (m_sm.state != MOTOR_MOVING)
+        {
+            m_sm.state = MOTOR_MOVING;
+            drv8874_nsleep(1);
+        }
+        drv8874_drive(m_openloop_drive);
+        telemetry_tick(current, current, (float)m_openloop_drive, 0.0f,
+                       (int)m_sm.state, m_isense, m_fault);
+        if (m_openloop_ticks == 0)
+        {
+            // Watchdog expired: hold wherever we ended up (never fling).
+            m_subtarget                = (int32_t)current;
+            link_epx_pos->target_angle = (int32_t)current;
+            pid_reset(&m_pid, current);
+            m_arrive_count = 0;
+        }
         return;
     }
 

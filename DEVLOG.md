@@ -252,7 +252,8 @@ harness can't yet force; telemetry `current` is absolute angle but there is no e
 
 | Commit | Summary |
 |--------|---------|
-| (this) | HIL calibration: capture gear 2 & 10 at two symmetric angles (±span/2); jog waits for motion to *stop* not HLD (robust to the standing error that keeps the motor MOV), safe-hold on real stall; `--span` replaces deltas (hardware-validated) |
+| (this) | add console `u<n>` open-loop drive (PID bypass, ±400 clamp, ~250 ms watchdog auto-holds position) for bench system-ID; exits on any t/s |
+| `1d20626` | HIL calibration: capture gear 2 & 10 at two symmetric angles (±span/2); jog waits for motion to *stop* not HLD (robust to the standing error that keeps the motor MOV), safe-hold on real stall; `--span` replaces deltas (hardware-validated) |
 | `9c62919` | add HIL test battery (`tools/epx_hil/tests/`): core-motion (sweep+repeatability), safety (overcurrent/power-loss/boot-slam), tuning (step/hold/jitter), endurance+flash; registry + `add_check` summary rows |
 | `3e4ab4d` | add Python HIL harness (`tools/epx_hil/`): serial demux, autodetect, two-point calibration FSM, telemetry capture + per-move metrics, timestamped logs, CLI; offline pytest |
 | `0e06455` | add console `r` reboot command (deferred reset flushes pending flash + reply; emits `#boot` on restart) for the HIL harness |
