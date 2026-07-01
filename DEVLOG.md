@@ -252,7 +252,8 @@ harness can't yet force; telemetry `current` is absolute angle but there is no e
 
 | Commit | Summary |
 |--------|---------|
-| (this) | boot-slam guard (hold current position if the implied on-boot move > 180°, enforcing "never fling on boot") + rate-limit turn-count flash saves to <=1/0.5 s (a fast spin was thrashing FDS and hanging the firmware). Both found by the HIL autotune runaway |
+| (this) | HIL `autotune`: seed PD from the plant, climb a Ki ladder scoring settle/ss-error/hold-hunt, pick fastest-settling that meets target, confirm + apply. Bench result Kp=2.87/Ki=2.28/Kd=0.068 -> settles ~90 ms, ss ~1° (was ~15° never-settling) |
+| `d3bb018` | boot-slam guard (hold current position if the implied on-boot move > 180°, enforcing "never fling on boot") + rate-limit turn-count flash saves to <=1/0.5 s (a fast spin was thrashing FDS and hanging the firmware). Both found by the HIL autotune runaway |
 | `2927482` | HIL `characterize` (system-ID via `u`): reusable `sysid.py` measures breakaway/viscous/inertia from the open-loop response and seeds PID gains; foundation for autotune |
 | `d07b358` | add console `u<n>` open-loop drive (PID bypass, ±400 clamp, ~250 ms watchdog auto-holds position) for bench system-ID; exits on any t/s |
 | `1d20626` | HIL calibration: capture gear 2 & 10 at two symmetric angles (±span/2); jog waits for motion to *stop* not HLD (robust to the standing error that keeps the motor MOV), safe-hold on real stall; `--span` replaces deltas (hardware-validated) |

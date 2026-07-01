@@ -10,6 +10,7 @@ pca10040/s132/armgcc/settings_dfu.hex
 
 # EPX HIL harness (Python)
 tools/epx_hil/logs/
+tools/.venv/
 __pycache__/
 *.pyc
 .pytest_cache/

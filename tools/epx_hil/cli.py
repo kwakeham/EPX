@@ -8,10 +8,12 @@ failure.
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
 
+from . import autotune as autotune_mod
 from . import calibrate, commands, moves, probe, protocol, reset, sysid
 from .context import Context
 from .link import SerialLink
@@ -392,6 +394,47 @@ def cmd_characterize(args) -> int:
         session.close()
 
 
+def cmd_autotune(args) -> int:
+    log = _log(args.verbose)
+    session = new_session(args, "autotune")
+    try:
+        link = connect(args, session)
+    except probe.NoDeviceError as e:
+        log(f"ERROR: {e}")
+        session.close()
+        return EXIT_COMM
+    try:
+        session.write_meta(collect_meta(link, args))
+        commands.clear_fault(link)
+
+        if args.plant:
+            plant = sysid.PlantModel(**json.loads(Path(args.plant).read_text())["plant"])
+            log(f"== autotune (plant from {args.plant}) ==")
+        else:
+            log("== characterize (for plant model) ==")
+            plant, runs = sysid.characterize(link, sysid.CharacterizeConfig(), log=log)
+            session.write_json("sysid.json", {"plant": plant.to_dict()})
+            for name in ("up", "dn", "step"):
+                session.write_rows_csv(f"sysid_{name}.csv", runs[name])
+            log("== autotune ==")
+
+        cfg = autotune_mod.AutotuneConfig(step_deg=args.step, ss_target_deg=args.ss_target)
+        best, trials = autotune_mod.autotune(link, plant, cfg, session=session, log=log)
+        session.write_json("autotune.json",
+                           {"best": best, "trials": [t.to_dict() for t in trials]})
+        log("")
+        log(f"  best gains: Kp={best['kp']} Ki={best['ki']} Kd={best['kd']}")
+        log(f"  confirm: ss={best.get('confirm_ss')}deg settle={best.get('confirm_settle_ms')}ms "
+            f"hunt={best.get('confirm_hunt')}deg settled={best.get('confirm_settled')}")
+        log(f"  gains left APPLIED + persisted on the device. logs: {session.dir}")
+        css = best.get("confirm_ss")
+        ok = css is not None and css <= args.ss_target and best.get("confirm_settled")
+        return EXIT_OK if ok else EXIT_TESTFAIL
+    finally:
+        link.close()
+        session.close()
+
+
 def cmd_replay(args) -> int:
     from . import offline
     summary = offline.replay_transcript(args.path)
@@ -479,6 +522,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--isense-abort", type=int, default=None, dest="isense_abort",
                     help="abort if raw ISENSE reaches this (safety on a loaded rig)")
     sp.set_defaults(func=cmd_characterize)
+
+    sp = sub.add_parser("autotune", help="seed PID from the plant, refine closed-loop")
+    sp.add_argument("--plant", default=None, help="sysid.json to seed from (else characterize first)")
+    sp.add_argument("--step", type=float, default=90.0, help="angle step used per trial (deg)")
+    sp.add_argument("--ss-target", type=float, default=3.0, dest="ss_target",
+                    help="steady-state error target (deg)")
+    sp.set_defaults(func=cmd_autotune)
 
     sp = sub.add_parser("replay", help="offline: summarise a transcript.log")
     sp.add_argument("path")
