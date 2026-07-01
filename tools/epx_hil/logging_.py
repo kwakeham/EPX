@@ -97,6 +97,18 @@ class LogSession:
         self._records.append(report.record_for(idx, metrics))
         return idx
 
+    def add_check(self, name: str, passed: bool, detail: str = "") -> int:
+        """Record a non-move pass/fail check (fault latch, recovery, jitter, ...)."""
+        self._move_count += 1
+        idx = self._move_count
+        rec = {c: "-" for c in report.SUMMARY_COLUMNS}
+        rec["#"] = idx
+        rec["move"] = name
+        rec["flags"] = detail or "-"
+        rec["result"] = "PASS" if passed else "FAIL"
+        self._records.append(rec)
+        return idx
+
     def write_calibration(self, result) -> None:
         d = self.dir / "calibration"
         d.mkdir(exist_ok=True)

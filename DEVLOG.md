@@ -252,7 +252,8 @@ harness can't yet force; telemetry `current` is absolute angle but there is no e
 
 | Commit | Summary |
 |--------|---------|
-| (this) | add Python HIL harness (`tools/epx_hil/`): serial demux, autodetect, two-point calibration FSM, telemetry capture + per-move metrics, timestamped logs, CLI; offline pytest |
+| (this) | add HIL test battery (`tools/epx_hil/tests/`): core-motion (sweep+repeatability), safety (overcurrent/power-loss/boot-slam), tuning (step/hold/jitter), endurance+flash; registry + `add_check` summary rows |
+| `3e4ab4d` | add Python HIL harness (`tools/epx_hil/`): serial demux, autodetect, two-point calibration FSM, telemetry capture + per-move metrics, timestamped logs, CLI; offline pytest |
 | `0e06455` | add console `r` reboot command (deferred reset flushes pending flash + reply; emits `#boot` on restart) for the HIL harness |
 | `b0061a1` | store overshift as per-mille of shift distance; seed EPS overshift table + gear profile; faster cal jog; ~2 s Btn3 hold to enter cal (CONFIG_VERSION 3) |
 | `306027b` | add PROJECT_OVERVIEW.md (store-turns position design); correct boot-slam analysis (not a regression) |
