@@ -38,6 +38,8 @@ uint32_t mpos_debug_counter = 0;
 #define MPOS_SETTLE_TICKS 64      // ticks in band before sleeping the driver (~0.25 s @ 256 Hz)
 #define MPOS_ARRIVE_TICKS 8       // ticks in band before a shift sub-target counts as reached
 #define MPOS_DT (1.0f / 256.0f)   // control loop period (seconds), matches sample timer
+#define BOOT_SAFE_MAX_DEG 180     // implied on-boot move above this => hold, don't fling
+#define TURN_SAVE_MIN_TICKS 128   // min ticks between turn-count flash saves (~0.5 s)
 
 static bool update_position = false; // Flag to know if a new position has been acquired
 
@@ -100,6 +102,7 @@ static bool  m_angle_primed = false;  // seed angle_old from the first real read
 // settle AND whenever it changes (see mpos_motor_drive). An abrupt power-off
 // mid-move can still leave it stale -- see "Known risk" in CLAUDE.md.
 static int32_t m_saved_rotations = 0;  // last turn count we requested be persisted
+static uint16_t m_turn_save_hold = 0;  // rate-limit countdown for turn-count saves
 static bool    m_boot_evt = false;     // emit the one-shot #boot event on the first tick
 
 static void _default_pos_save_callback(void) {}
@@ -471,20 +474,42 @@ void mpos_motor_drive(void)
     if (m_boot_evt)
     {
         m_boot_evt = false;
-        evt_log(EVT_BOOT, "#boot,rot=%ld,gear=%d,pos=%ld,tgt=%ld",
-                (long)link_epx_pos->current_rotations, (int)link_epx_pos->current_gear,
-                (long)current, (long)m_subtarget);
+        // Boot-slam guard (enforces the "never fling on boot" invariant): if the
+        // restored target implies an unreasonable move -- a stale turn count or a
+        // bad calibration -- hold the CURRENT position instead of driving to it.
+        // A normal boot holds its gear (implied move ~0); only a corrupt turn count
+        // gives a multi-turn implied move. Recovery is deliberate recalibration.
+        if (fabsf((float)m_subtarget - current) > (float)BOOT_SAFE_MAX_DEG)
+        {
+            m_subtarget                = (int32_t)current;
+            link_epx_pos->target_angle = (int32_t)current;
+            pid_reset(&m_pid, current);
+            shift_seq_init(&m_seq);
+            evt_log(EVT_BOOT, "#boot,unsafe=1,rot=%ld,gear=%d,pos=%ld,held=%ld",
+                    (long)link_epx_pos->current_rotations, (int)link_epx_pos->current_gear,
+                    (long)current, (long)m_subtarget);
+        }
+        else
+        {
+            evt_log(EVT_BOOT, "#boot,rot=%ld,gear=%d,pos=%ld,tgt=%ld",
+                    (long)link_epx_pos->current_rotations, (int)link_epx_pos->current_gear,
+                    (long)current, (long)m_subtarget);
+        }
     }
 
-    // Persist the multi-turn count as soon as it changes (a turn boundary was
-    // crossed), not just when the motor settles -- this shrinks the window where
-    // an abrupt power-off would lose the turn count. Crossings are infrequent so
-    // flash wear stays comparable to the per-shift save; the only pathological
-    // case is the PID hunting exactly on a 360 boundary (rare, and it settles).
-    if (link_epx_pos->current_rotations != m_saved_rotations)
+    // Persist the multi-turn count when it changes (a turn boundary was crossed),
+    // not just on settle -- this shrinks the window where an abrupt power-off would
+    // lose the turn count. Rate-limited: a fast continuous spin (windup, or a bench
+    // free-spin) would otherwise cross boundaries every few ms and thrash FDS,
+    // stalling the firmware. Coalescing to <=1 save per TURN_SAVE_MIN_TICKS bounds
+    // the flash traffic; the settle save still captures the final count, and the
+    // boot-slam guard above covers any resulting <=1-turn ambiguity.
+    if (m_turn_save_hold > 0) m_turn_save_hold--;
+    if (link_epx_pos->current_rotations != m_saved_rotations && m_turn_save_hold == 0)
     {
         m_saved_rotations = link_epx_pos->current_rotations;
         m_registered_pos_save_callback();
+        m_turn_save_hold  = TURN_SAVE_MIN_TICKS;
     }
 
     // Overcurrent guard: if faulted, kill drive, sleep the driver, abort any

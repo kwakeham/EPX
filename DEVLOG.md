@@ -252,7 +252,8 @@ harness can't yet force; telemetry `current` is absolute angle but there is no e
 
 | Commit | Summary |
 |--------|---------|
-| (this) | HIL `characterize` (system-ID via `u`): reusable `sysid.py` measures breakaway/viscous/inertia from the open-loop response and seeds PID gains; foundation for autotune |
+| (this) | boot-slam guard (hold current position if the implied on-boot move > 180°, enforcing "never fling on boot") + rate-limit turn-count flash saves to <=1/0.5 s (a fast spin was thrashing FDS and hanging the firmware). Both found by the HIL autotune runaway |
+| `2927482` | HIL `characterize` (system-ID via `u`): reusable `sysid.py` measures breakaway/viscous/inertia from the open-loop response and seeds PID gains; foundation for autotune |
 | `d07b358` | add console `u<n>` open-loop drive (PID bypass, ±400 clamp, ~250 ms watchdog auto-holds position) for bench system-ID; exits on any t/s |
 | `1d20626` | HIL calibration: capture gear 2 & 10 at two symmetric angles (±span/2); jog waits for motion to *stop* not HLD (robust to the standing error that keeps the motor MOV), safe-hold on real stall; `--span` replaces deltas (hardware-validated) |
 | `9c62919` | add HIL test battery (`tools/epx_hil/tests/`): core-motion (sweep+repeatability), safety (overcurrent/power-loss/boot-slam), tuning (step/hold/jitter), endurance+flash; registry + `add_check` summary rows |
