@@ -7,17 +7,28 @@ writes timestamped, never-overwritten logs with per-move metrics.
 
 ## Install
 
-```
-pip install -r requirements.txt      # pyserial (matplotlib/pytest optional)
+A venv keeps pyserial pinned to one interpreter (recommended on Windows, where the
+`python` on PATH churns). From the `tools/` directory:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r epx_hil\requirements.txt   # + pytest to run offline tests
 ```
 
-Run everything as a module from the `tools/` directory (so `epx_hil` is
-importable):
+Run everything as a module from `tools/` (so `epx_hil` is importable). Windows
+options:
 
+```powershell
+# direct-call (no activation, most reliable)
+.\.venv\Scripts\python.exe -m epx_hil <subcommand> [options]
+
+# or activate first, then use plain `python`
+.\.venv\Scripts\Activate.ps1        # PowerShell (Set-ExecutionPolicy -Scope Process -Bypass if blocked)
+.venv\Scripts\activate.bat          # cmd.exe
+python -m epx_hil <subcommand>
 ```
-cd tools
-python -m epx_hil <subcommand> [options]
-```
+
+On macOS/Linux: `source .venv/bin/activate` then `python -m epx_hil ...`.
 
 ## Quick start
 
@@ -78,7 +89,10 @@ cd tools && python -m pytest epx_hil -q
   `atoi`/`sscanf` ones tolerate spaces (`xl 5`, `o 5 0 ...`). See `protocol.py`.
 - Direct shifts use the 0-based internal gear index: logical gear 1 = `s0`,
   gear 11 = `s10`. The CLI takes logical (1..11) and converts.
-- Calibration jogs are bounded, relative to the live sensor, capped in total
-  travel, and abort on stall/fault — a bad target can't slam a hard stop.
+- Calibration captures gear 2 and gear 10 at two symmetric angles (each `--span`/2
+  from the start). Jogs are bounded relative moves that wait for the position to
+  *stop* (not for HLD, which never comes while a standing error exceeds the settle
+  band), accept "stopped near target" as arrival, and abort to a safe hold only on
+  a genuine stall far from target — so a bad target can't grind a real end stop.
 - Reboot uses the firmware `r` command (the J-Link CDC survives an nRF reset, so
   the COM port persists); `--method nrfjprog` re-probes after re-enumeration.

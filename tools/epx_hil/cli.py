@@ -141,8 +141,7 @@ def cmd_reset(args) -> int:
 def cmd_calibrate(args) -> int:
     log = _log(args.verbose)
     cfg = calibrate.CalibrationConfig(
-        g2_delta_deg=args.g2_delta, g10_delta_deg=args.g10_delta,
-        g2_angle_deg=args.g2_angle, g10_angle_deg=args.g10_angle,
+        span_deg=args.span, g2_angle_deg=args.g2_angle, g10_angle_deg=args.g10_angle,
         jog_step_deg=args.jog_step, settle_timeout=args.settle_timeout)
     try:
         link = connect(args, None if args.dry_jog else new_session(args, "calibrate"))
@@ -386,10 +385,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_reset)
 
     sp = sub.add_parser("calibrate", help="automated two-point calibration")
-    sp.add_argument("--g2-delta", type=float, default=0.0, dest="g2_delta")
-    sp.add_argument("--g10-delta", type=float, default=-5392.0, dest="g10_delta")
-    sp.add_argument("--g2-angle", type=float, default=None, dest="g2_angle")
-    sp.add_argument("--g10-angle", type=float, default=None, dest="g10_angle")
+    sp.add_argument("--span", type=float, default=5392.0,
+                    help="gear2..gear10 total travel (deg); captures are ±span/2 about the start")
+    sp.add_argument("--g2-angle", type=float, default=None, dest="g2_angle",
+                    help="absolute gear-2 capture angle (overrides span)")
+    sp.add_argument("--g10-angle", type=float, default=None, dest="g10_angle",
+                    help="absolute gear-10 capture angle (overrides span)")
     sp.add_argument("--jog-step", type=float, default=90.0, dest="jog_step")
     sp.add_argument("--dry-jog", action="store_true", help="print the jog plan, do not move")
     sp.set_defaults(func=cmd_calibrate)

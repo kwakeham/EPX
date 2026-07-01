@@ -4,17 +4,24 @@ The firmware's console cal path is: enter angle mode, jog with ``t<abs>``, captu
 the low ref with ``gl``, jog again, capture the high ref with ``gh``, then ``gi``
 to affine-fit the nominal cog profile through the two refs and persist. Nothing
 auto-sets ``current_gear`` afterward, so we finish by entering gear mode and
-``s9`` (logical gear 10) — whose target equals the just-captured high ref, so the
-device settles in gear 10 without a large move.
+``s9`` (logical gear 10) to seat the device in gear 10.
 
-Safety (full assembled derailleur, ~5400° between gear 2 and gear 10): every jog
-is a bounded step computed from a freshly-read sensor angle, capped in total
-travel, settled per step, and aborted on a fault or a stall (no motion => a hard
-stop). We never send a blind absolute target that could slam a stop.
+Gear 2 and gear 10 are captured at two **distinct, symmetric** angles — each
+``span/2`` away from the entry position (gear 2 the higher angle, gear 10 the
+lower, per the EPS profile), i.e. "similar distances away".
+
+Jogging is robust to the current control reality: with Kp-only gains the motor
+holds with a standing error larger than the firmware's settle band, so it reports
+``MOV`` forever and never reaches ``HLD``. We therefore jog by waiting for the
+**position to stop changing** (not for a HLD that never comes), accept "stopped
+near the target" as arrival (the standing error keeps it from landing exactly),
+and only treat no-motion *far* from the target as a real stall/end-stop — which
+aborts to a safe hold (protects a real derailleur's hard stops).
 """
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 
 from . import commands, protocol
@@ -28,21 +35,23 @@ class CalibrationError(RuntimeError):
 
 @dataclass
 class CalibrationConfig:
-    # Capture targets: absolute angle if given, else entry position + delta.
-    g2_delta_deg: float = 0.0            # gear 2 captured at the entry position
-    g10_delta_deg: float = -5392.0       # gear 10 ~5392 deg below gear 2 (EPS profile)
-    g2_angle_deg: float | None = None
+    span_deg: float = 5392.0             # gear2..gear10 total travel (EPS profile)
+    g2_angle_deg: float | None = None    # absolute overrides (else entry ± span/2)
     g10_angle_deg: float | None = None
-    # Jog safety envelope.
+    # Jog behaviour / safety.
     jog_step_deg: float = 90.0
     jog_tol_deg: float = 3.0
-    max_total_jog_deg: float = 6000.0
-    stall_eps_deg: float = 2.0
-    max_stalls: int = 2
-    jog_settle_timeout: float = 6.0
+    jog_step_timeout: float = 3.0        # per-step: wait for motion to stop
+    arrival_band_deg: float = 90.0       # "stopped this close to target" == arrived
+    stall_eps_deg: float = 2.0           # per-step motion below this == no progress
+    max_stalls: int = 3                  # consecutive no-progress steps far from target
+    motion_stable_eps_deg: float = 3.0   # |Δpos| under this == stable
+    motion_stable_count: int = 4         # consecutive stable samples == stopped
+    poll_s: float = 0.08
+    max_total_jog_deg: float = 0.0       # 0 => derive from span
     settle_timeout: float = 12.0
     # Span sanity (gear2..gear10).
-    span_min_deg: float = 500.0
+    span_min_deg: float = 100.0
     span_max_deg: float = 7000.0
 
 
@@ -57,13 +66,14 @@ class Calibrator:
         self.log = log
 
     def plan(self) -> dict:
-        """Compute the jog plan without moving (``--dry-jog``)."""
+        """Compute the (symmetric) jog plan without moving (``--dry-jog``)."""
         st = commands.read_status(self.link)
         if st is None:
             raise CalibrationError("no status reply; is the device connected?")
         entry = st.pos_deg
-        g2 = self.cfg.g2_angle_deg if self.cfg.g2_angle_deg is not None else entry + self.cfg.g2_delta_deg
-        g10 = self.cfg.g10_angle_deg if self.cfg.g10_angle_deg is not None else entry + self.cfg.g10_delta_deg
+        half = self.cfg.span_deg / 2.0
+        g2 = self.cfg.g2_angle_deg if self.cfg.g2_angle_deg is not None else entry + half
+        g10 = self.cfg.g10_angle_deg if self.cfg.g10_angle_deg is not None else entry - half
         return {"entry_deg": entry, "g2_target_deg": g2, "g10_target_deg": g10,
                 "span_deg": abs(g10 - g2), "jog_step_deg": self.cfg.jog_step_deg}
 
@@ -94,15 +104,13 @@ class Calibrator:
         if table is None or not table.is_calibrated():
             flags.append("gear_table_invalid")
 
-        # Establish gear 10 at the current (high-ref) position without a big move.
+        # Seat gear 10 at the current (high-ref) position without a big move.
         commands.ensure_gear_mode(self.link)
         self.link.send_nowait(protocol.cmd_shift_to_index(GEAR_IDX_HIGH))
-        commands.wait_settle_status(self.link, timeout=self.cfg.settle_timeout)
+        self._wait_motion_stop(self.cfg.settle_timeout)
         st = commands.read_status(self.link)
         if st is None or st.gear != GEAR_IDX_HIGH:
             flags.append("post_cal_gear_mismatch")
-        if st is not None and st.moving:
-            flags.append("post_cal_not_settled")
         if st is not None and st.fault:
             flags.append("post_cal_fault")
 
@@ -111,39 +119,86 @@ class Calibrator:
                                  gear_table=table, ok=ok, flags=flags)
 
     # ----- internals ------------------------------------------------------- #
+    def _jog_cap(self) -> float:
+        return self.cfg.max_total_jog_deg or (self.cfg.span_deg * 1.5 + 500.0)
+
+    def _safe_hold(self) -> None:
+        """Command the motor to hold the current sensor position (stop driving)."""
+        st = commands.read_status(self.link)
+        if st:
+            self.link.send_nowait(protocol.cmd_set_angle(st.pos_deg))
+
+    def _wait_motion_stop(self, timeout: float):
+        """Poll ``?`` until the position stops changing (or fault/timeout).
+
+        Returns ``(status, faulted)``. Independent of MOV/HLD, so it works even
+        when the standing error keeps the firmware reporting MOV forever.
+        """
+        deadline = time.perf_counter() + timeout
+        last = None
+        stable = 0
+        st = None
+        while time.perf_counter() < deadline:
+            st = commands.read_status(self.link)
+            if st is None:
+                continue
+            if st.fault:
+                return st, True
+            if last is not None and abs(st.pos_deg - last) <= self.cfg.motion_stable_eps_deg:
+                stable += 1
+                if stable >= self.cfg.motion_stable_count:
+                    return st, False
+            else:
+                stable = 0
+            last = st.pos_deg
+            time.sleep(self.cfg.poll_s)
+        return st, False
+
     def _jog_to(self, target_abs: float) -> None:
         st = commands.read_status(self.link)
         if st is None:
             raise CalibrationError("no status during jog")
-        if abs(target_abs - st.pos_deg) > self.cfg.max_total_jog_deg:
+        cap = self._jog_cap()
+        if abs(target_abs - st.pos_deg) > cap:
             raise CalibrationError(
-                f"jog to {target_abs:.0f}deg from {st.pos_deg}deg exceeds safety cap "
-                f"{self.cfg.max_total_jog_deg:.0f}deg")
+                f"jog to {target_abs:.0f}deg from {st.pos_deg}deg exceeds cap {cap:.0f}deg")
+
+        max_iters = int(abs(target_abs - st.pos_deg) / max(1.0, self.cfg.jog_step_deg)) * 3 + 60
         stalls = 0
-        while True:
+        for _ in range(max_iters):
             st = commands.read_status(self.link)
             if st is None:
-                raise CalibrationError("no status during jog")
+                continue                      # dropped read: retry, not a stall
             if st.fault:
+                self._safe_hold()
                 raise CalibrationError("fault during jog")
             remaining = target_abs - st.pos_deg
             if abs(remaining) <= self.cfg.jog_tol_deg:
                 return
-            step = _clamp(remaining, -self.cfg.jog_step_deg, self.cfg.jog_step_deg)
             before = st.pos_deg
+            step = _clamp(remaining, -self.cfg.jog_step_deg, self.cfg.jog_step_deg)
             self.link.send_nowait(protocol.cmd_set_angle(before + step))
-            res = commands.wait_settle_status(self.link, timeout=self.cfg.jog_settle_timeout)
-            if res.fault:
-                raise CalibrationError("fault while settling a jog step")
-            after = commands.read_status(self.link)
-            moved = abs((after.pos_deg if after else before) - before)
-            if moved < self.cfg.stall_eps_deg:
+            after, faulted = self._wait_motion_stop(self.cfg.jog_step_timeout)
+            if faulted:
+                self._safe_hold()
+                raise CalibrationError("fault while jogging")
+            pos_after = after.pos_deg if after else before
+            if abs(pos_after - before) < self.cfg.stall_eps_deg:
+                # No progress. Near the target this is just the standing error /
+                # tolerance -> accept as arrived. Far from target it's real
+                # resistance (an end stop) -> abort to a safe hold.
+                if abs(target_abs - pos_after) <= self.cfg.arrival_band_deg:
+                    return
                 stalls += 1
                 if stalls >= self.cfg.max_stalls:
+                    self._safe_hold()
                     raise CalibrationError(
-                        f"no motion near {before}deg (stall / hard stop) after {stalls} steps")
+                        f"no motion at {pos_after}deg, {abs(target_abs - pos_after):.0f}deg "
+                        f"from target (resistance / end stop?)")
             else:
                 stalls = 0
+        self._safe_hold()
+        raise CalibrationError(f"jog to {target_abs:.0f}deg did not converge")
 
     def _capture(self, cmd: str, parser, label: str) -> int:
         r = self.link.send_and_await(cmd, expect=lambda ln: parser(ln) is not None, timeout=1.5)
