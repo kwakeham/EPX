@@ -110,6 +110,7 @@ SRC_FILES += \
   $(PROJ_DIR)/libraries/derailleur.c \
   $(PROJ_DIR)/libraries/shift_seq.c \
   $(PROJ_DIR)/libraries/telemetry.c \
+  $(PROJ_DIR)/libraries/evt_log.c \
   $(PROJ_DIR)/libraries/console.c \
   $(PROJ_DIR)/libraries/data_handler.c \
   $(PROJ_DIR)/libraries/multi_btn.c \

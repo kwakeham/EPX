@@ -101,6 +101,7 @@
 #include "drv8874.h"
 #include "multi_btn.h"
 #include "console.h"
+#include "evt_log.h"
 
 
 
@@ -160,6 +161,9 @@ int main(void)
 
     //Boot target = calibrated gear position for the saved gear (not target_angle)
     data_handler_set_boot_target();
+
+    //HIL tagged-event output (boot/cal/save/turn/fault); mask defaults on
+    evt_log_init();
 
     //Interactive UART console banner (commands + telemetry on COM5)
     console_init();

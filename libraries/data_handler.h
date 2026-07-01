@@ -19,10 +19,6 @@ void data_handler_command(const char* p_chars, uint32_t length);
 
 void data_handler_command_processor(void);
 
-float data_handler_command_float_return(uint8_t offset);
-
-int32_t data_handler_command_number_return(uint8_t offset);
-
 void data_handler_force_save(char command);
 
 void data_handler_shift_gear_handler(bool command, int shift_count);

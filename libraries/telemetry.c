@@ -30,7 +30,7 @@ void telemetry_set_rate(uint16_t divider)
     m_tick    = 0;
     if (divider > 0)
     {
-        static const char header[] = "t_ms,target,current,error,drive,integral,state,isense,fault\n";
+        static const char header[] = "t_ms,target,current,error,drive,integral,state,isense,fault\r\n";
         serial_write((const uint8_t *)header, sizeof(header) - 1);
     }
 }
@@ -57,7 +57,7 @@ void telemetry_tick(float target, float current, float drive, float integral,
     m_phase = 0;
 
     int n = snprintf(m_line, sizeof(m_line),
-                     "%lu,%ld,%ld,%ld,%ld,%ld,%d,%d,%d\n",
+                     "%lu,%ld,%ld,%ld,%ld,%ld,%d,%d,%d\r\n",
                      (unsigned long)t_ms,
                      (long)(target * 100.0f),
                      (long)(current * 100.0f),

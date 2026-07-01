@@ -14,4 +14,12 @@
 /** Blocking-ish write of len bytes to the UART (COM5). Safe before init (no-op). */
 void serial_write(const uint8_t *data, uint16_t len);
 
+/**
+ * @brief Non-blocking best-effort write: push bytes to the UART TX FIFO and stop
+ *        at the first byte that doesn't fit (drops the rest of the line) instead
+ *        of spinning. Use from real-time contexts (control loop, button ISR)
+ *        where a blocking write could stall. Safe before init (no-op).
+ */
+void serial_try_write(const uint8_t *data, uint16_t len);
+
 #endif // SERIAL_IO_H

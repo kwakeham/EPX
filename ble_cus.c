@@ -888,6 +888,18 @@ void serial_write(const uint8_t *data, uint16_t len)
         while (app_uart_put(data[i]) != NRF_SUCCESS && guard) { guard--; }
     }
 }
+
+void serial_try_write(const uint8_t *data, uint16_t len)
+{
+    if (!m_uart_ready) return;
+    for (uint16_t i = 0; i < len; i++)
+    {
+        // Non-blocking: if the TX FIFO is full, drop the rest of the line rather
+        // than spin. Critical when called from an ISR higher-priority than the
+        // (LOWEST) UART IRQ, where spinning would prevent the FIFO from draining.
+        if (app_uart_put(data[i]) != NRF_SUCCESS) return;
+    }
+}
 /**@snippet [Handling the data received over UART] */
 
 

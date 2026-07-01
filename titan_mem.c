@@ -97,6 +97,11 @@ static struct
 {                                                                           \
     .config_version     = CONFIG_VERSION,                                   \
     .num_gears          = NUM_REAR_GEARS,                                   \
+    /* Gentle alive-but-safe gains so a reset device moves slowly instead of  \
+     * being dead (Kp=0) or slamming; re-tune up from here. */               \
+    .Kp                 = 3.0f,                                              \
+    .Ki                 = 0.0f,                                              \
+    .Kd                 = 0.0f,                                              \
     .ref_lo_idx         = GEAR_REF_LO_IDX,                                  \
     .ref_hi_idx         = GEAR_REF_HI_IDX,                                  \
     .isense_limit       = 2000,                                             \

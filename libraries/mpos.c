@@ -19,6 +19,7 @@
 #include "motor_sm.h"
 #include "shift_seq.h"
 #include "telemetry.h"
+#include "evt_log.h"
 
 #define NRF_LOG_MODULE_NAME mpos
 #define NRF_LOG_LEVEL       3
@@ -91,6 +92,7 @@ static bool  m_angle_primed = false;  // seed angle_old from the first real read
 // settle AND whenever it changes (see mpos_motor_drive). An abrupt power-off
 // mid-move can still leave it stale -- see "Known risk" in CLAUDE.md.
 static int32_t m_saved_rotations = 0;  // last turn count we requested be persisted
+static bool    m_boot_evt = false;     // emit the one-shot #boot event on the first tick
 
 static void _default_pos_save_callback(void) {}
 static voidfunctionptr_t  m_registered_pos_save_callback = &_default_pos_save_callback;
@@ -157,7 +159,11 @@ static bool mpos_check_fault(void)
         uint16_t limit_count = (m_isense_count != NULL) ? *m_isense_count : 1;
         if (m_over_count >= limit_count)
         {
-            if (!m_fault) NRF_LOG_WARNING("FAULT overcurrent: isense %d", m_isense);
+            if (!m_fault)
+            {
+                NRF_LOG_WARNING("FAULT overcurrent: isense %d", m_isense);
+                evt_log(EVT_FAULT, "#fault,type=oc,isense=%d", m_isense);
+            }
             m_fault = true;
         }
     }
@@ -168,7 +174,11 @@ static bool mpos_check_fault(void)
 
     if (nrf_gpio_pin_read(M_nFault) == 0) // DRV8874 fault output, active low
     {
-        if (!m_fault) NRF_LOG_WARNING("FAULT driver nFault asserted");
+        if (!m_fault)
+        {
+            NRF_LOG_WARNING("FAULT driver nFault asserted");
+            evt_log(EVT_FAULT, "#fault,type=drv,isense=%d", m_isense);
+        }
         m_fault = true;
     }
 
@@ -365,12 +375,16 @@ float angle(int16_t hall_0, int16_t hall_1)
         if ((angle_old - rotation_angle) > 180.0)
         {
             link_epx_pos->current_rotations++;
+            evt_log(EVT_TURN, "#turn,rot=%ld,angle=%d",
+                    (long)link_epx_pos->current_rotations, (int)rotation_angle);
         }
     } else if (angle_old < rotation_angle)
     {
         if ((rotation_angle - angle_old) > 180.0)
         {
             link_epx_pos->current_rotations--;
+            evt_log(EVT_TURN, "#turn,rot=%ld,angle=%d",
+                    (long)link_epx_pos->current_rotations, (int)rotation_angle);
         }
     }
     angle_old = rotation_angle;
@@ -429,6 +443,17 @@ void mpos_motor_drive(void)
 
     float current = mpos_calculate_angle();
     m_last_angle  = current;
+
+    // First tick after boot: report the reconstructed absolute position vs the
+    // restored target (the implied on-boot move = tgt - pos). See store-turns
+    // recovery in PROJECT_OVERVIEW.md.
+    if (m_boot_evt)
+    {
+        m_boot_evt = false;
+        evt_log(EVT_BOOT, "#boot,rot=%ld,gear=%d,pos=%ld,tgt=%ld",
+                (long)link_epx_pos->current_rotations, (int)link_epx_pos->current_gear,
+                (long)current, (long)m_subtarget);
+    }
 
     // Persist the multi-turn count as soon as it changes (a turn boundary was
     // crossed), not just when the motor settles -- this shrinks the window where
@@ -525,6 +550,7 @@ void mpos_link_memory(epx_position_configuration_t *temp_link_epx_values)
     // target_angle here. Track the restored turn count so we only persist changes.
     m_angle_primed   = false;
     m_saved_rotations = link_epx_pos->current_rotations;
+    m_boot_evt        = true;  // report the reconstructed boot position on the first tick
 }
 
 void mpos_sincos_debug(void)
