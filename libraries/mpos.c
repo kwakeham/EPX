@@ -307,6 +307,11 @@ void mpos_init(voidfunctionptr_t pos_save_callback) //Initialize the SAADC and t
     nrf_gpio_cfg_input(M_nFault, NRF_GPIO_PIN_PULLUP);
 
     // Control + sleep state machine. Gains are bound earlier via mpos_link_gains().
+    // LOADED tuning reference (bench, spare EPS derailleur, 2026-07-01, HIL autotune):
+    //   Kp=2.87, Ki=4.0, Kd=0.068 @256Hz -> settles ~330-770ms both directions, no
+    //   hunt. Ki is ONLY safe with load: on a free-spinning motor the integral winds
+    //   up and runs away. Plant (loaded): breakaway ~75 duty, moving ~0.6A, spring-
+    //   loaded (biases toward the high stop). Re-tune under real chain load. See DEVLOG.
     // Recovered tuning reference (pre-rewrite PID_controller.c, re-tune from here):
     //   Kp ~ 9 @128Hz, 18 @256Hz, 35-40 @512Hz  (old PID summed error; this one
     //   folds dt in, so those numbers are only a starting point -- re-tune).

@@ -248,11 +248,89 @@ harness can't yet force; telemetry `current` is absolute angle but there is no e
 
 ---
 
+## Loaded derailleur bring-up + PID tuning (2026-07-01)
+
+First run on a real EPS derailleur through the HIL harness, plus the firmware
+robustness fixes the process forced out (an `autotune` runaway on a *free-spinning*
+bench motor cascaded into flash corruption + a boot loop — each fix below is an
+independent hardening).
+
+### Firmware hardening (this session, all committed)
+- **`r` reboot** and **`u` open-loop drive** console commands (HIL + bench system-ID).
+- **Boot-slam guard** (`mpos.c`): if the implied on-boot move > `BOOT_SAFE_MAX_DEG`
+  (180°), the first tick holds the current position instead of driving a stale target
+  (`#boot,unsafe=1`). Enforces "never fling on boot".
+- **Turn-save rate-limit** (`TURN_SAVE_MIN_TICKS` ~0.5 s): a fast spin was writing the
+  turn count to FDS every 360° crossing and thrashing flash until the app hung.
+- **FDS saves non-fatal** (`titan_mem.c` `fds_save_check`): transient FDS errors
+  (`NO_SPACE_IN_QUEUES`/`BUSY`/`NO_SPACE_IN_FLASH`) retry instead of `APP_ERROR_CHECK`
+  resetting the MCU. A busy flash was reboot-looping the board.
+- **End-stop safety** (`mpos.c`): (a) **stall guard** latches `#fault,type=stall` after
+  ~1.5 s driving out-of-band with no progress; (b) **target clamp** to the calibrated
+  gear range ±360°; (c) **leaky overcurrent counter** so PWM ripple can't defeat the
+  consecutive-sample rule.
+
+### Loaded plant (spare EPS derailleur, bench)
+- Drive→angle sign **correct** (positive duty → positive angle).
+- **Breakaway ~75 duty**, moving current **~0.6 A** (peak ~0.75 A pushing a tight spot).
+- **Spring-loaded**: releasing drive lets the return spring push toward the high stop;
+  holding a low position needs continuous drive against the spring.
+- Travel **> 5300°** mapped, with **variable friction / tight spots** (not just hard
+  stops). At a fixed open-loop drive the motor stalls wherever resistance exceeds that
+  drive, at low current.
+
+### Current sense
+DRV8874 **IPROPI 0.45 V/A → 1 kΩ → AIN1** (`M_ISENSE`), SAADC **gain 1/4, ref VDD/4**
+(full-scale = VDD) → **~558 counts/A @3.3 V** (VDD-ratiometric). Default `xl=2000`
+≈ 3.6 A. Set for the target trip after measuring the loaded stall/shift peak.
+
+### Safety verified on hardware
+- **Stall guard fires closed-loop**: a low-Kp move into resistance stalled at ~0.75 A
+  (peak 1.5 A) — *below* the 2.7 A overcurrent — and latched `#fault,type=stall` 1.5 s
+  after motion stopped. **On this low-friction mechanism the stall guard, not
+  overcurrent, is the primary end-stop protection** (I²·t → the time cap is what saves
+  the motor).
+- Overcurrent covers the high-drive-into-a-hard-stop case (~2.8 A at full duty).
+
+### PID tuning (loaded, HIL autotune + manual Ki ladder)
+Ki is well-behaved **under load** (load damps the integral; unloaded it runs away).
+Ki ladder on ±90° moves at `Kp=2.87, Kd=0.068`:
+
+| Ki | settle | ss-err | hunt |
+|----|--------|--------|------|
+| 2  | 3.0 s  | 2.1°   | 0.5° |
+| **4** | **0.35 s** | 3.0° | 0.6° |
+| 6  | 0.26 s | 7.4°   | 0.7° |
+| 8  | 0.20 s | 7.4°   | 0.5° |
+
+**Chosen: `Kp=2.87, Ki=4.0, Kd=0.068`** — settles 330–770 ms both directions, no hunt,
+no runaway (round-trip ±90/±180 verified). ss-error in degrees is physically tiny
+(~0.01–0.03 mm at 1.5 mm/360°). Down-shifts against the spring draw the most current
+(−180° peaked 2.3 A). A **starting point** — re-tune under real chain load. Kept as
+commented references in `mpos.c` / `titan_mem.c`; flash defaults stay Ki=0 (safe unloaded).
+
+### On-bike TODO
+1. Calibrate using the on-bike gear alignment features.
+2. Widen `xl` above a measured real loaded down-shift peak; keep the stall guard as the
+   time cap. Consider shortening the 1.5 s stall timeout for margin.
+3. Re-run `characterize`/`autotune` under chain load.
+
+### Tooling notes
+- Run harness from `tools/`: `.\.venv\Scripts\python.exe -m epx_hil <cmd>`.
+- pyserial `SetCommState` "stack overflow" on this PC: unstick with
+  `mode COM10: BAUD=115200 PARITY=n DATA=8 STOP=1` (DCB reset); PowerShell
+  `System.IO.Ports.SerialPort` also works as a fallback.
+- Recover a corrupted FDS without a full wipe (keeps SD+bootloader): erase the 3 FDS
+  pages `nrfjprog -f nrf52 --erasepage 0x75000-0x77FFF`, then reset.
+
+---
+
 ## Commit history (reverse chronological)
 
 | Commit | Summary |
 |--------|---------|
-| (this) | end-stop safety (defense-in-depth to overcurrent): (2) stall guard latches a fault when driving out-of-band with no progress for ~1.5 s; (3) clamp the target to the calibrated gear range ±360° so a bad target/overshoot can't command past a stop; (4) leaky overcurrent counter so PWM ripple can't defeat the consecutive-sample rule. ISENSE ~558 counts/A @3.3V (0.45 V/A, ADC ref VDD/4) — set `xl` for ≤3 A after measuring loaded stall |
+| (this) | document 2026-07-01 loaded derailleur bring-up + PID tuning in DEVLOG; record loaded tune (Kp=2.87/Ki=4.0/Kd=0.068) + current-sense math as commented references in `mpos.c`/`titan_mem.c` (flash defaults stay Ki=0, safe unloaded) |
+| `2757d1c` | end-stop safety (defense-in-depth to overcurrent): (2) stall guard latches a fault when driving out-of-band with no progress for ~1.5 s; (3) clamp the target to the calibrated gear range ±360° so a bad target/overshoot can't command past a stop; (4) leaky overcurrent counter so PWM ripple can't defeat the consecutive-sample rule. ISENSE ~558 counts/A @3.3V (0.45 V/A, ADC ref VDD/4) — set `xl` for ≤3 A after measuring loaded stall |
 | `ad250a7` | FDS saves are non-fatal: transient `FDS_ERR_NO_SPACE_IN_QUEUES`/`BUSY`/`NO_SPACE_IN_FLASH` no longer `APP_ERROR_CHECK`-reset the MCU (they're retried on the next trigger). A busy flash was reboot-looping the device after the autotune-triggered FDS churn; a momentarily-busy store must never reset the chip |
 | `858bf0e` | HIL `autotune`: seed PD from the plant, climb a Ki ladder scoring settle/ss-error/hold-hunt, pick fastest-settling that meets target, confirm + apply. Bench result Kp=2.87/Ki=2.28/Kd=0.068 -> settles ~90 ms, ss ~1° (was ~15° never-settling) |
 | `d3bb018` | boot-slam guard (hold current position if the implied on-boot move > 180°, enforcing "never fling on boot") + rate-limit turn-count flash saves to <=1/0.5 s (a fast spin was thrashing FDS and hanging the firmware). Both found by the HIL autotune runaway |

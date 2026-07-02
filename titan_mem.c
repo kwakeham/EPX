@@ -98,12 +98,23 @@ static struct
     .config_version     = CONFIG_VERSION,                                   \
     .num_gears          = NUM_REAR_GEARS,                                   \
     /* Gentle alive-but-safe gains so a reset device moves slowly instead of  \
-     * being dead (Kp=0) or slamming; re-tune up from here. */               \
+     * being dead (Kp=0) or slamming; re-tune up from here. Ki stays 0 by      \
+     * DEFAULT on purpose: with no mechanical load an integral term winds up   \
+     * and runs the motor away (observed on a free-spinning bench motor), so   \
+     * Ki is only safe once the derailleur load is present.                    \
+     * Loaded reference (bench, spare EPS derailleur, 2026-07-01, HIL autotune):\
+     *   Kp=2.87, Ki=4.0, Kd=0.068 -> settles ~330-770 ms both directions, no  \
+     *   hunt, no runaway. Starting point; re-tune under chain load. See DEVLOG.*/\
     .Kp                 = 3.0f,                                              \
     .Ki                 = 0.0f,                                              \
     .Kd                 = 0.0f,                                              \
     .ref_lo_idx         = GEAR_REF_LO_IDX,                                  \
     .ref_hi_idx         = GEAR_REF_HI_IDX,                                  \
+    /* ISENSE overcurrent, raw SAADC counts. ~558 counts/A @3.3V (DRV8874     \
+     * IPROPI 0.45 V/A -> 1k -> AIN1; SAADC gain 1/4, ref VDD/4). 2000 ~=3.6A. \
+     * Loaded moves peak ~0.6-2.3A; a low-drive stall reads only ~0.6A (BELOW  \
+     * this), so the mpos stall guard -- not overcurrent -- is the primary     \
+     * end-stop protection. Widen for chain load once measured on the bike. */ \
     .isense_limit       = 2000,                                             \
     .isense_fault_count = 8,                                                \
     .rear_overshift = {                                                     \
