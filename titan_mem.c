@@ -309,6 +309,26 @@ void tm_fds_test_delete()
     }
 }
 
+// FDS writes are async; a full operation queue or an in-flight garbage collection
+// returns a transient error. Those are NOT faults -- resetting the MCU on them
+// (the old APP_ERROR_CHECK) turned a momentarily-busy flash into a boot loop when
+// the boot-time config write and the first settle-save collided. Treat them as
+// "skip this save; it will be retried on the next trigger". Only a genuinely
+// unexpected error stays fatal.
+static void fds_save_check(ret_code_t rc)
+{
+    switch (rc)
+    {
+    case NRF_SUCCESS:
+    case FDS_ERR_NO_SPACE_IN_QUEUES: // op queue full; retry on the next trigger
+    case FDS_ERR_BUSY:               // FDS busy (e.g. GC in flight); retry later
+    case FDS_ERR_NO_SPACE_IN_FLASH:  // needs GC to reclaim space; retry later
+        return;
+    default:
+        APP_ERROR_CHECK(rc);
+    }
+}
+
 void tm_fds_config_init()
 {
     ret_code_t rc;
@@ -352,7 +372,7 @@ void tm_fds_config_init()
                             m_epx_cfg.config_version, CONFIG_VERSION);
             m_epx_cfg = (epx_configuration_t)EPX_CONFIG_DEFAULTS;
             rc = fds_record_update(&desc, &m_epx_record);
-            APP_ERROR_CHECK(rc);
+            fds_save_check(rc);
         }
     }
     else
@@ -361,7 +381,7 @@ void tm_fds_config_init()
         NRF_LOG_INFO("Writing config file...");
 
         rc = fds_record_write(&desc, &m_epx_record);
-        APP_ERROR_CHECK(rc);
+        fds_save_check(rc);
     }
 
     rc = fds_record_find(FILE_ID_SLEEP, RECORD_KEY_SLEEP_1, &desc, &tok);
@@ -389,7 +409,7 @@ void tm_fds_config_init()
         NRF_LOG_INFO("Writing sleep file...");
 
         rc = fds_record_write(&desc, &m_epx_position_record);
-        APP_ERROR_CHECK(rc);
+        fds_save_check(rc);
     }
 }
 
@@ -428,20 +448,15 @@ void tm_fds_config_update()
 
     if (rc == NRF_SUCCESS)
     {
-        //debug info
-        // char tm_debug_message[20];
-        // sprintf(tm_debug_message,"%ld, %.5f \n",m_epx_cfg.zero, m_epx_cfg.calibration);
-        // NRF_LOG_INFO("%s",tm_debug_message);
-
         rc = fds_record_update(&desc, &m_epx_record);
-        APP_ERROR_CHECK(rc);
+        fds_save_check(rc);
     }
     else
     {
         /* System config not found; write a new one. */
         NRF_LOG_INFO("Writing config file...");
         rc = fds_record_write(&desc, &m_epx_record);
-        APP_ERROR_CHECK(rc);
+        fds_save_check(rc);
     }
 }
 
@@ -457,28 +472,16 @@ void tm_fds_position_update()
 
     if (rc == NRF_SUCCESS)
     {
-        //debug info
-        // char tm_debug_message[20];
-        // sprintf(tm_debug_message,"%ld, %.5f \n",m_epx_cfg.zero, m_epx_cfg.calibration);
-        // NRF_LOG_INFO("%s",tm_debug_message);
         NRF_LOG_INFO("Updating position");
-
         rc = fds_record_update(&desc, &m_epx_position_record);
-        APP_ERROR_CHECK(rc);
-        if (rc == NRF_SUCCESS)
-        {
-            NRF_LOG_INFO("SUCCESS Updated position");
-        } else
-        {
-            NRF_LOG_INFO("FAIL position not saved");
-        }
+        fds_save_check(rc);
     }
     else
     {
         /* System config not found; write a new one. */
         NRF_LOG_INFO("Writing position file...");
         rc = fds_record_write(&desc, &m_epx_position_record);
-        APP_ERROR_CHECK(rc);
+        fds_save_check(rc);
     }
 }
 
