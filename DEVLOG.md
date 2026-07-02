@@ -252,7 +252,8 @@ harness can't yet force; telemetry `current` is absolute angle but there is no e
 
 | Commit | Summary |
 |--------|---------|
-| (this) | FDS saves are non-fatal: transient `FDS_ERR_NO_SPACE_IN_QUEUES`/`BUSY`/`NO_SPACE_IN_FLASH` no longer `APP_ERROR_CHECK`-reset the MCU (they're retried on the next trigger). A busy flash was reboot-looping the device after the autotune-triggered FDS churn; a momentarily-busy store must never reset the chip |
+| (this) | end-stop safety (defense-in-depth to overcurrent): (2) stall guard latches a fault when driving out-of-band with no progress for ~1.5 s; (3) clamp the target to the calibrated gear range ±360° so a bad target/overshoot can't command past a stop; (4) leaky overcurrent counter so PWM ripple can't defeat the consecutive-sample rule. ISENSE ~558 counts/A @3.3V (0.45 V/A, ADC ref VDD/4) — set `xl` for ≤3 A after measuring loaded stall |
+| `ad250a7` | FDS saves are non-fatal: transient `FDS_ERR_NO_SPACE_IN_QUEUES`/`BUSY`/`NO_SPACE_IN_FLASH` no longer `APP_ERROR_CHECK`-reset the MCU (they're retried on the next trigger). A busy flash was reboot-looping the device after the autotune-triggered FDS churn; a momentarily-busy store must never reset the chip |
 | `858bf0e` | HIL `autotune`: seed PD from the plant, climb a Ki ladder scoring settle/ss-error/hold-hunt, pick fastest-settling that meets target, confirm + apply. Bench result Kp=2.87/Ki=2.28/Kd=0.068 -> settles ~90 ms, ss ~1° (was ~15° never-settling) |
 | `d3bb018` | boot-slam guard (hold current position if the implied on-boot move > 180°, enforcing "never fling on boot") + rate-limit turn-count flash saves to <=1/0.5 s (a fast spin was thrashing FDS and hanging the firmware). Both found by the HIL autotune runaway |
 | `2927482` | HIL `characterize` (system-ID via `u`): reusable `sysid.py` measures breakaway/viscous/inertia from the open-loop response and seeds PID gains; foundation for autotune |

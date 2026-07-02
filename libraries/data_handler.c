@@ -556,6 +556,33 @@ void data_handler_command_gear_value_print(void)
              epx_configuration.gear_pos[9], epx_configuration.gear_pos[10], epx_configuration.gear_pos[11]);
 }
 
+// Bind the motor's target-travel clamp to the calibrated gear range (+ margin for
+// overshift). Disabled (0,0) when uncalibrated. Called after a fit and at boot.
+#define TRAVEL_MARGIN_DEG 360
+void data_handler_update_travel_limits(void)
+{
+    int n = epx_configuration.num_gears;
+    if (n > NUM_REAR_GEARS) n = NUM_REAR_GEARS;
+
+    bool calibrated = false;
+    for (int i = 0; i < n; i++)
+        if (epx_configuration.gear_pos[i] != 0) { calibrated = true; break; }
+    if (!calibrated || n <= 0)
+    {
+        mpos_set_travel_limits(0, 0); // uncalibrated: clamp disabled
+        return;
+    }
+
+    int32_t lo = epx_configuration.gear_pos[0], hi = lo;
+    for (int i = 1; i < n; i++)
+    {
+        int32_t p = epx_configuration.gear_pos[i];
+        if (p < lo) lo = p;
+        if (p > hi) hi = p;
+    }
+    mpos_set_travel_limits(lo - TRAVEL_MARGIN_DEG, hi + TRAVEL_MARGIN_DEG);
+}
+
 void data_handler_compute_gears(void)
 {
     if (!ref_lo_set || !ref_hi_set)
@@ -586,6 +613,7 @@ void data_handler_compute_gears(void)
     epx_configuration.ref_hi_idx = GEAR_REF_HI_IDX;
 
     update_config_flash = true; // persist the computed positions
+    data_handler_update_travel_limits();
     data_handler_command_gear_value_print();
 }
 
@@ -771,6 +799,7 @@ void data_handler_set_boot_target(void)
     //    give the TARGET.
     // The saved target_angle is ignored when the gears are filled in. Call after
     // mpos_init() so this overrides mpos's default target seed.
+    data_handler_update_travel_limits(); // arm the target clamp from the gear table
     if (epx_configuration.num_gears > 0)
     {
         int g = epx_position.current_gear;

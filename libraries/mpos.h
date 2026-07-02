@@ -116,6 +116,13 @@ void mpos_shift_to(int32_t final_pos, int16_t signed_overshift, uint16_t dwell_t
  */
 void mpos_set_open_loop(int16_t drive, uint16_t ticks);
 
+/**
+ * @brief Clamp the motor target to [lo, hi] (centi... whole degrees, absolute) so a
+ *        bad target/overshoot can't drive past an end stop. hi <= lo disables it.
+ *        Set from the calibrated gear table (+ margin) after calibration and boot.
+ */
+void mpos_set_travel_limits(int32_t lo, int32_t hi);
+
 /** Last raw current-sense (ISENSE/AIN1) count. */
 int16_t mpos_isense(void);
 

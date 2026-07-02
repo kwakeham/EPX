@@ -40,6 +40,12 @@ uint32_t mpos_debug_counter = 0;
 #define MPOS_DT (1.0f / 256.0f)   // control loop period (seconds), matches sample timer
 #define BOOT_SAFE_MAX_DEG 180     // implied on-boot move above this => hold, don't fling
 #define TURN_SAVE_MIN_TICKS 128   // min ticks between turn-count flash saves (~0.5 s)
+// Stall guard: driving hard toward a target we're not reaching (an end stop /
+// jam) => latch a fault instead of grinding continuously. Independent backstop to
+// the ISENSE overcurrent guard.
+#define MPOS_STALL_TICKS   384    // ~1.5 s of no progress while driving out-of-band
+#define MPOS_STALL_ERR_DEG 45     // only guard when commanded well out of band (not a standing error)
+#define MPOS_STALL_EPS_DEG 5      // progress (deg) that resets the stall timer
 
 static bool update_position = false; // Flag to know if a new position has been acquired
 
@@ -104,6 +110,16 @@ static bool  m_angle_primed = false;  // seed angle_old from the first real read
 static int32_t m_saved_rotations = 0;  // last turn count we requested be persisted
 static uint16_t m_turn_save_hold = 0;  // rate-limit countdown for turn-count saves
 static bool    m_boot_evt = false;     // emit the one-shot #boot event on the first tick
+
+// Stall guard state (see MPOS_STALL_* above).
+static float    m_stall_ref   = 0.0f;  // position at the last progress reset
+static uint16_t m_stall_count = 0;     // ticks driving out-of-band without progress
+
+// Target travel clamp: m_subtarget is clamped to [m_travel_lo, m_travel_hi] so a
+// bad target/overshoot can't drive into an end stop. Disabled when hi <= lo
+// (uncalibrated); set via mpos_set_travel_limits() from the calibrated gear table.
+static int32_t  m_travel_lo = 0;
+static int32_t  m_travel_hi = 0;
 
 static void _default_pos_save_callback(void) {}
 static voidfunctionptr_t  m_registered_pos_save_callback = &_default_pos_save_callback;
@@ -178,9 +194,12 @@ static bool mpos_check_fault(void)
             m_fault = true;
         }
     }
-    else
+    else if (m_over_count > 0)
     {
-        m_over_count = 0;
+        // Leaky decay instead of a hard reset: a stall's PWM ripple that dips
+        // briefly under the limit can't keep resetting the consecutive-sample
+        // count and thereby hide a sustained overcurrent.
+        m_over_count--;
     }
 
     if (nrf_gpio_pin_read(M_nFault) == 0) // DRV8874 fault output, active low
@@ -407,6 +426,7 @@ void mpos_update_angle(bool direct, float new_target_angle)
     if (m_fault) return; // motion inhibited until the fault is cleared
 
     m_openloop_ticks = 0; // a closed-loop target exits open-loop drive
+    m_stall_count    = 0; // new target: restart the stall timer
 
     if(direct)
     {
@@ -427,6 +447,7 @@ void mpos_shift_to(int32_t final_pos, int16_t signed_overshift, uint16_t dwell_t
     if (m_fault) return; // motion inhibited until the fault is cleared
 
     m_openloop_ticks = 0; // a closed-loop shift exits open-loop drive
+    m_stall_count    = 0; // new target: restart the stall timer
 
     link_epx_pos->target_angle = final_pos; // persist the resting position
 
@@ -443,6 +464,12 @@ void mpos_set_open_loop(int16_t drive, uint16_t ticks)
     if (drive < -MPOS_OPENLOOP_MAX) drive = -MPOS_OPENLOOP_MAX;
     m_openloop_drive = drive;
     m_openloop_ticks = ticks;
+}
+
+void mpos_set_travel_limits(int32_t lo, int32_t hi)
+{
+    m_travel_lo = lo;
+    m_travel_hi = hi;   // hi <= lo disables the clamp (uncalibrated)
 }
 
 float mpos_calculate_angle(void)
@@ -570,6 +597,14 @@ void mpos_motor_drive(void)
         }
     }
 
+    // Clamp the (final or overshift-waypoint) target to the calibrated travel
+    // range so a bad target/overshoot can't command past an end stop.
+    if (m_travel_hi > m_travel_lo)
+    {
+        if (m_subtarget < m_travel_lo) m_subtarget = m_travel_lo;
+        if (m_subtarget > m_travel_hi) m_subtarget = m_travel_hi;
+    }
+
     float target = (float)m_subtarget;
     float drive  = 0.0f;
 
@@ -600,6 +635,33 @@ void mpos_motor_drive(void)
         if (act.pid_reset)      pid_reset(&m_pid, current);
         if (act.nsleep_changed) drv8874_nsleep(act.nsleep_value);
         if (act.save_position)  m_registered_pos_save_callback();
+    }
+
+    // Stall guard: driving hard but not progressing toward a far target => stuck
+    // against a stop/jam. Latch a fault so we don't grind continuously. Gated on a
+    // large error so a small standing (stiction) error at hold never trips it.
+    if (m_sm.state == MOTOR_MOVING && drive != 0.0f &&
+        fabsf(target - current) > (float)MPOS_STALL_ERR_DEG)
+    {
+        if (fabsf(current - m_stall_ref) >= (float)MPOS_STALL_EPS_DEG)
+        {
+            m_stall_ref   = current;
+            m_stall_count = 0;
+        }
+        else if (++m_stall_count >= MPOS_STALL_TICKS)
+        {
+            m_fault = true;
+            drive   = 0.0f;
+            drv8874_nsleep(0);
+            shift_seq_init(&m_seq);
+            evt_log(EVT_FAULT, "#fault,type=stall,pos=%ld,tgt=%ld",
+                    (long)current, (long)m_subtarget);
+        }
+    }
+    else
+    {
+        m_stall_ref   = current;
+        m_stall_count = 0;
     }
 
     drv8874_drive((int16_t)drive);
